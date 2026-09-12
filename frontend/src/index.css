@@ -38,7 +38,8 @@
   :root {
     --safe-top: env(safe-area-inset-top, 0px);
     --safe-bottom: env(safe-area-inset-bottom, 0px);
-    --bottom-nav-h: 3.5rem; /* docked tab bar height (excl. home-indicator inset) */
+    --bottom-nav-h: 3.5rem; /* floating pill height */
+    --bottom-nav-offset: 1.1rem; /* gap between the floating pill and the screen edge */
   }
 
   html {
@@ -108,7 +109,7 @@
   .pt-safe { padding-top: var(--safe-top); }
   .pb-safe { padding-bottom: var(--safe-bottom); }
   /* Page bottom padding: clears the floating bottom nav + home indicator */
-  .pb-nav { padding-bottom: calc(var(--bottom-nav-h) + var(--safe-bottom) + 1rem); }
+  .pb-nav { padding-bottom: calc(var(--bottom-nav-h) + var(--bottom-nav-offset) + var(--safe-bottom) + 1rem); }
   .min-h-dvh { min-height: 100vh; min-height: 100dvh; }
 
   /* Hide scrollbars on horizontal chip rows */
@@ -418,66 +419,78 @@
 .ptr-spin { animation: ptr-rot 0.8s linear infinite; }
 @keyframes ptr-rot { to { transform: rotate(360deg); } }
 
-/* ---------- Native-style liquid-glass tab bar (WhatsApp / iOS) ---------- */
-.tab-bar {
-  position: fixed; left: 0; right: 0; bottom: 0; z-index: 40;
-  padding-bottom: var(--safe-bottom);           /* covers the home-indicator area */
-  background: rgba(255, 255, 255, 0.82);
-  backdrop-filter: blur(28px) saturate(190%);
-  -webkit-backdrop-filter: blur(28px) saturate(190%);
-  border-top: 0.5px solid rgba(15, 23, 42, 0.10);
-  box-shadow: 0 -1px 0 rgba(255, 255, 255, 0.55) inset, 0 -8px 30px -12px rgba(15, 23, 42, 0.18);
+/* ---------- Floating liquid-glass pill tab bar with a sliding active indicator ---------- */
+.tab-bar-float {
+  position: fixed; left: 1rem; right: 1rem; z-index: 40;
+  bottom: calc(var(--bottom-nav-offset) + var(--safe-bottom));
+  max-width: 24.5rem; margin: 0 auto;
   transform: translateZ(0);                     /* keeps blur crisp while page scrolls beneath */
 }
-.dark .tab-bar {
-  background: rgba(15, 23, 42, 0.82);
-  border-top-color: rgba(255, 255, 255, 0.10);
-  box-shadow: 0 -1px 0 rgba(255, 255, 255, 0.06) inset, 0 -8px 30px -12px rgba(0, 0, 0, 0.6);
-}
-.amoled .tab-bar {
-  background: rgba(0, 0, 0, 0.82) !important;
-  border-top-color: rgba(255, 255, 255, 0.14);
-}
-.tab-bar-inner {
-  display: flex; align-items: stretch; justify-content: space-between;
+.tab-rail {
+  position: relative;
+  display: flex; align-items: center; justify-content: space-around;
   height: var(--bottom-nav-h);
-  padding: 0 0.25rem;
+  padding: 0.4rem 0.6rem;
+  border-radius: 9999px;
+  background: rgba(255, 255, 255, 0.75);
+  backdrop-filter: blur(28px) saturate(190%);
+  -webkit-backdrop-filter: blur(28px) saturate(190%);
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  box-shadow: 0 12px 36px -8px rgba(15, 23, 42, 0.28), inset 0 1px 1px rgba(255, 255, 255, 0.6);
 }
+.dark .tab-rail {
+  background: rgba(17, 24, 39, 0.65);
+  border-color: rgba(255, 255, 255, 0.12);
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.55), inset 0 1px 1px rgba(255, 255, 255, 0.1);
+}
+.amoled .tab-rail {
+  background: rgba(0, 0, 0, 0.78) !important;
+  border-color: rgba(255, 255, 255, 0.16);
+}
+
+/* The liquid slider: one shared pill that glides + gently stretches to the newly active tab */
+.tab-slider {
+  position: absolute; top: 0.4rem; left: 0; bottom: 0.4rem;
+  border-radius: 9999px;
+  background: rgba(17, 134, 172, 0.14);
+  border: 1px solid rgba(17, 134, 172, 0.35);
+  box-shadow: 0 0 16px rgba(56, 166, 207, 0.28);
+  opacity: 0;
+  transition: transform 420ms cubic-bezier(0.34, 1.56, 0.64, 1), width 420ms cubic-bezier(0.34, 1.56, 0.64, 1), opacity 200ms ease;
+  pointer-events: none;
+  will-change: transform, width;
+}
+.tab-slider.is-ready { opacity: 1; }
+.dark .tab-slider { background: rgba(98, 197, 238, 0.16); border-color: rgba(98, 197, 238, 0.35); box-shadow: 0 0 18px rgba(98, 197, 238, 0.28); }
+.amoled .tab-slider { background: rgba(16, 185, 129, 0.16) !important; border-color: rgba(16, 185, 129, 0.4) !important; box-shadow: 0 0 18px rgba(16, 185, 129, 0.3) !important; }
+
 .tab-item {
+  position: relative; z-index: 1; /* sits above the sliding pill */
   flex: 1 1 0; min-width: 0;
   display: flex; flex-direction: column; align-items: center; justify-content: center;
-  gap: 2px; padding-top: 4px;
+  gap: 1px; padding: 0.3rem 0;
   color: #6b7280;
   -webkit-tap-highlight-color: transparent;
-  transition: color 160ms ease, transform 120ms ease;
+  transition: color 200ms ease, transform 120ms ease;
 }
 .dark .tab-item { color: #94a3b8; }
-.tab-item:active { transform: scale(0.94); }
+.tab-item:active { transform: scale(0.92); }
 .tab-item.is-active { color: #1186ac; }
 .dark .tab-item.is-active { color: #62c5ee; }
 .amoled .tab-item.is-active { color: #10b981; }
-.tab-icon {
-  display: flex; align-items: center; justify-content: center;
-  width: 3.25rem; height: 1.9rem; border-radius: 9999px;
-  transition: background 180ms ease;
-}
-/* iOS-style glass pill behind the active icon */
-.tab-item.is-active .tab-icon {
-  background: rgba(17, 134, 172, 0.13);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.5);
-}
-.dark .tab-item.is-active .tab-icon { background: rgba(98, 197, 238, 0.16); box-shadow: inset 0 1px 0 rgba(255,255,255,0.08); }
-.amoled .tab-item.is-active .tab-icon { background: rgba(16, 185, 129, 0.16); }
-.tab-label { font-size: 10px; font-weight: 600; line-height: 1; letter-spacing: 0.01em; }
+.tab-icon { display: flex; align-items: center; justify-content: center; }
+.tab-label { font-size: 9.5px; font-weight: 600; line-height: 1; letter-spacing: 0.01em; }
 .tab-item.is-active .tab-label { font-weight: 700; }
+
 .tab-add {
   display: flex; align-items: center; justify-content: center;
-  width: 2.5rem; height: 2.5rem; border-radius: 0.9rem; color: #fff;
-  margin-top: -14px;                              /* floats slightly above the bar like WhatsApp's compose */
-  box-shadow: 0 10px 22px -8px rgba(17, 134, 172, 0.7), 0 0 0 4px rgba(255, 255, 255, 0.65);
+  width: 2.75rem; height: 2.75rem; border-radius: 9999px; color: #fff;
+  margin-top: -1.85rem;                          /* floats above the pill like a compose FAB */
+  box-shadow: 0 10px 22px -6px rgba(17, 134, 172, 0.65), 0 0 0 4px rgba(255, 255, 255, 0.7);
   transition: transform 140ms ease;
 }
-.dark .tab-add { box-shadow: 0 10px 22px -8px rgba(17, 134, 172, 0.7), 0 0 0 4px rgba(15, 23, 42, 0.7); }
+.dark .tab-add { box-shadow: 0 10px 22px -6px rgba(17, 134, 172, 0.65), 0 0 0 4px rgba(17, 24, 39, 0.75); }
+.amoled .tab-add { box-shadow: 0 10px 22px -6px rgba(0, 196, 159, 0.5), 0 0 0 4px rgba(0, 0, 0, 0.85) !important; }
 .tab-item:active .tab-add { transform: scale(0.92); }
 
 /* Header: a touch more glass so the balance card blurs through it, like a native nav bar */

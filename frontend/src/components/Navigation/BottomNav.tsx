@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useLayoutEffect, useRef, useState } from 'react';
 import {
   LayoutDashboard,
   Receipt,
@@ -31,6 +31,9 @@ export const BottomNav: React.FC<BottomNavProps> = ({
   onOpenQuickAdd,
 }) => {
   const [menuOpen, setMenuOpen] = useState(false);
+  const railRef = useRef<HTMLDivElement>(null);
+  const tabRefs = useRef<Record<string, HTMLButtonElement | null>>({});
+  const [indicator, setIndicator] = useState<{ left: number; width: number; ready: boolean }>({ left: 0, width: 0, ready: false });
 
   const handleTabClick = (tabId: string) => {
     setActiveTab(tabId);
@@ -51,29 +54,50 @@ export const BottomNav: React.FC<BottomNavProps> = ({
   const tabs = [
     { id: 'dashboard', label: 'Home', icon: LayoutDashboard, active: activeTab === 'dashboard' },
     { id: 'expenses', label: 'Expenses', icon: Receipt, active: activeTab === 'expenses' },
-    null, // centre "+" slot
+    null, // centre "+" slot — a raised action button, not part of the sliding indicator
     { id: 'loans', label: 'Loans', icon: Landmark, active: activeTab === 'loans' || activeTab === 'credit' },
     { id: 'more', label: 'More', icon: Grid, active: menuOpen || MORE_TABS.includes(activeTab) },
   ] as const;
 
+  const activeId = tabs.find((t) => t && t.active)?.id ?? null;
+
+  // Measure the active tab's position/width so the glass pill can slide (not jump) to it.
+  useLayoutEffect(() => {
+    const measure = () => {
+      const rail = railRef.current;
+      const el = activeId ? tabRefs.current[activeId] : null;
+      if (!rail || !el) return;
+      const railRect = rail.getBoundingClientRect();
+      const elRect = el.getBoundingClientRect();
+      setIndicator({ left: elRect.left - railRect.left, width: elRect.width, ready: true });
+    };
+    measure();
+    const ro = new ResizeObserver(measure);
+    if (railRef.current) ro.observe(railRef.current);
+    window.addEventListener('resize', measure);
+    return () => {
+      ro.disconnect();
+      window.removeEventListener('resize', measure);
+    };
+  }, [activeId]);
+
   return (
     <>
-      {/* Native-style tab bar: full width, docked to the screen edge, content blurs behind it */}
-      <nav className="tab-bar" aria-label="Primary">
-        <div className="tab-bar-inner max-w-md mx-auto">
-          {tabs.map((tab, i) => {
+      {/* Floating liquid-glass pill tab bar, with a sliding "liquid" indicator behind the active tab */}
+      <nav className="tab-bar-float" aria-label="Primary">
+        <div className="tab-rail" ref={railRef}>
+          <div
+            className={`tab-slider ${indicator.ready ? 'is-ready' : ''}`}
+            style={{ transform: `translateX(${indicator.left}px)`, width: `${indicator.width}px` }}
+            aria-hidden="true"
+          />
+          {tabs.map((tab) => {
             if (tab === null) {
               return (
-                <button
-                  key="add"
-                  onClick={onOpenQuickAdd}
-                  className="tab-item group"
-                  aria-label="Quick add"
-                >
+                <button key="add" onClick={onOpenQuickAdd} className="tab-item group" aria-label="Quick add">
                   <span className="tab-add liquid-fab">
                     <Plus className="w-6 h-6 stroke-[2.5]" />
                   </span>
-                  <span className="tab-label text-brand-600 dark:text-brand-400">Add</span>
                 </button>
               );
             }
@@ -81,13 +105,14 @@ export const BottomNav: React.FC<BottomNavProps> = ({
             return (
               <button
                 key={tab.id}
+                ref={(el) => { tabRefs.current[tab.id] = el; }}
                 onClick={() => (tab.id === 'more' ? setMenuOpen((o) => !o) : handleTabClick(tab.id))}
                 className={`tab-item ${tab.active ? 'is-active' : ''}`}
                 aria-current={tab.active ? 'page' : undefined}
                 aria-label={tab.label}
               >
                 <span className="tab-icon">
-                  <Icon className="w-[22px] h-[22px]" strokeWidth={tab.active ? 2.4 : 1.9} />
+                  <Icon className="w-[19px] h-[19px]" strokeWidth={tab.active ? 2.4 : 1.9} />
                 </span>
                 <span className="tab-label">{tab.label}</span>
               </button>
