@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Mail, Send, CalendarPlus, Download, RefreshCw, CheckCircle2, AlertTriangle } from 'lucide-react';
+import { Mail, Send, CalendarPlus, RefreshCw, CheckCircle2, AlertTriangle, MailPlus } from 'lucide-react';
 import { useFinance } from '../../context/FinanceContext';
 import * as api from '../../services/api';
 import { NotificationStatus } from '../../types/finance';
@@ -7,16 +7,16 @@ import { NotificationStatus } from '../../types/finance';
 const fieldCls =
   'w-full px-3 py-2.5 min-h-[2.75rem] rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm outline-none focus:ring-2 focus:ring-brand-500';
 
-/** Settings → "Email alerts" and "iPhone Calendar" cards. */
+/** Settings → "Email alerts" and "iPhone Calendar" cards. Both work entirely from on-device data. */
 export const AlertsSettings: React.FC = () => {
-  const { settings, refreshData } = useFinance();
+  const { settings, currency, refreshData } = useFinance();
 
   const [email, setEmail] = useState('');
   const [enabled, setEnabled] = useState(false);
   const [daysBefore, setDaysBefore] = useState(1);
   const [sendHour, setSendHour] = useState(8);
   const [status, setStatus] = useState<NotificationStatus | null>(null);
-  const [busy, setBusy] = useState<'save' | 'test' | 'now' | null>(null);
+  const [busy, setBusy] = useState<'save' | 'test' | 'now' | 'mailto' | 'ics' | null>(null);
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
 
   useEffect(() => {
@@ -60,10 +60,10 @@ export const AlertsSettings: React.FC = () => {
     if (!email.trim()) return flash(false, 'Enter your email address first.');
     setBusy('test');
     try {
-      const r = await api.sendTestEmail(email.trim());
-      flash(true, `Test email sent to ${r.to}. Check your inbox (and spam).`);
+      await api.sendTestEmail(email.trim());
+      flash(true, `Test email sent to ${email.trim()}. Check your inbox (and spam).`);
     } catch (e: any) {
-      flash(false, e.message || 'Could not send');
+      flash(false, e.message);
     } finally {
       setBusy(null);
     }
@@ -76,13 +76,34 @@ export const AlertsSettings: React.FC = () => {
       flash(r.sent, r.sent ? `Digest sent (${r.count} item${r.count === 1 ? '' : 's'}).` : `Not sent: ${r.reason}.`);
       await loadStatus();
     } catch (e: any) {
-      flash(false, e.message || 'Could not send');
+      flash(false, e.message);
     } finally {
       setBusy(null);
     }
   };
 
-  const smtpMissing = status !== null && !status.smtpConfigured;
+  const handleMailto = async () => {
+    setBusy('mailto');
+    try {
+      await api.composeMailto();
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const handleAddAllToCalendar = async () => {
+    setBusy('ics');
+    try {
+      await api.downloadFullCalendar(currency);
+      flash(true, 'Calendar file saved — open it and tap "Add to Calendar".');
+    } catch (e: any) {
+      flash(false, e.message);
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const relayReady = status?.smtpConfigured === true;
 
   return (
     <>
@@ -97,9 +118,7 @@ export const AlertsSettings: React.FC = () => {
             onClick={() => setEnabled((v) => !v)}
             className={`relative w-12 h-7 rounded-full transition-colors ${enabled ? 'bg-emerald-500' : 'bg-gray-300 dark:bg-slate-700'}`}
           >
-            <span
-              className={`absolute top-0.5 left-0.5 w-6 h-6 rounded-full bg-white shadow transition-transform ${enabled ? 'translate-x-5' : ''}`}
-            />
+            <span className={`absolute top-0.5 left-0.5 w-6 h-6 rounded-full bg-white shadow transition-transform ${enabled ? 'translate-x-5' : ''}`} />
           </button>
         </div>
 
@@ -108,18 +127,16 @@ export const AlertsSettings: React.FC = () => {
             <Mail className="w-5 h-5" />
           </div>
           <p className="text-[11px] text-gray-500 dark:text-slate-400 leading-snug">
-            Every morning you get one email listing EMIs, card bills and reminders due today or in the next few days. New reminders
-            also arrive by email with a calendar file attached.
+            Your data never leaves this device, so there's no server watching the clock for you. Use <b>Compose in Mail</b> any
+            time — it always works, no setup. <b>Auto-send</b> below needs a small optional relay deployed (see README); it only
+            forwards the digest this phone already computed, it never stores anything.
           </p>
         </div>
 
-        {smtpMissing && (
+        {status && !relayReady && (
           <div className="flex items-start gap-2 p-3 rounded-xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 text-[11px] text-amber-800 dark:text-amber-300">
             <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
-            <span>
-              Sending is not set up on the PC yet. Put your Gmail address and an <b>App Password</b> into <code>backend/.env</code>{' '}
-              (<code>SMTP_USER</code>, <code>SMTP_PASS</code>) and restart the backend.
-            </span>
+            <span>Auto-send relay isn't deployed/configured — "Send test" and "Send now" won't work until it is. "Compose in Mail" always works.</span>
           </div>
         )}
 
@@ -160,27 +177,36 @@ export const AlertsSettings: React.FC = () => {
           </div>
         </div>
 
-        <div className="flex gap-2 pt-1">
+        <button
+          onClick={handleSave}
+          disabled={busy !== null}
+          className="w-full min-h-[2.75rem] rounded-xl bg-brand-600 active:bg-brand-700 text-white text-xs font-semibold shadow-md disabled:opacity-60"
+        >
+          {busy === 'save' ? 'Saving…' : 'Save'}
+        </button>
+
+        <div className="flex gap-2">
           <button
-            onClick={handleSave}
-            disabled={busy !== null}
-            className="flex-1 min-h-[2.75rem] rounded-xl bg-brand-600 active:bg-brand-700 text-white text-xs font-semibold shadow-md disabled:opacity-60"
+            onClick={handleMailto}
+            disabled={busy !== null || !email.trim()}
+            className="flex-1 min-h-[2.75rem] rounded-xl bg-gray-800 dark:bg-slate-700 active:bg-gray-900 text-white text-xs font-semibold flex items-center justify-center gap-1.5 disabled:opacity-60"
           >
-            {busy === 'save' ? 'Saving…' : 'Save'}
+            <MailPlus className="w-3.5 h-3.5" /> Compose in Mail
           </button>
           <button
             onClick={handleTest}
-            disabled={busy !== null}
-            className="flex-1 min-h-[2.75rem] rounded-xl bg-gray-100 dark:bg-slate-800 text-gray-800 dark:text-slate-200 text-xs font-semibold flex items-center justify-center gap-1.5 disabled:opacity-60"
+            disabled={busy !== null || !relayReady}
+            title={relayReady ? 'Send a test email now' : 'Deploy the relay first (see README)'}
+            className="flex-1 min-h-[2.75rem] rounded-xl bg-gray-100 dark:bg-slate-800 text-gray-800 dark:text-slate-200 text-xs font-semibold flex items-center justify-center gap-1.5 disabled:opacity-40"
           >
             <Send className="w-3.5 h-3.5" /> {busy === 'test' ? 'Sending…' : 'Send test'}
           </button>
           <button
             onClick={handleSendNow}
-            disabled={busy !== null}
-            title="Send today's digest now"
+            disabled={busy !== null || !relayReady}
+            title={relayReady ? "Send today's digest now" : 'Deploy the relay first (see README)'}
             aria-label="Send today's digest now"
-            className="w-11 min-h-[2.75rem] rounded-xl bg-gray-100 dark:bg-slate-800 text-gray-800 dark:text-slate-200 flex items-center justify-center disabled:opacity-60"
+            className="w-11 min-h-[2.75rem] rounded-xl bg-gray-100 dark:bg-slate-800 text-gray-800 dark:text-slate-200 flex items-center justify-center disabled:opacity-40"
           >
             <RefreshCw className={`w-4 h-4 ${busy === 'now' ? 'animate-spin' : ''}`} />
           </button>
@@ -188,7 +214,7 @@ export const AlertsSettings: React.FC = () => {
 
         {msg && (
           <p className={`flex items-center gap-1.5 text-[11px] font-medium ${msg.ok ? 'text-emerald-600' : 'text-red-600'}`}>
-            {msg.ok ? <CheckCircle2 className="w-3.5 h-3.5" /> : <AlertTriangle className="w-3.5 h-3.5" />} {msg.text}
+            {msg.ok ? <CheckCircle2 className="w-3.5 h-3.5 shrink-0" /> : <AlertTriangle className="w-3.5 h-3.5 shrink-0" />} {msg.text}
           </p>
         )}
         {status && (
@@ -201,33 +227,24 @@ export const AlertsSettings: React.FC = () => {
 
       {/* iPhone Calendar */}
       <div className="p-4 xs:p-5 rounded-2xl liquid-glass-card space-y-3">
-        <h2 className="text-xs font-bold text-gray-500 uppercase tracking-wider">iPhone Calendar & alerts</h2>
+        <h2 className="text-xs font-bold text-gray-500 uppercase tracking-wider">iPhone Calendar</h2>
         <div className="flex items-start gap-3">
           <div className="p-2 rounded-xl bg-rose-50 dark:bg-rose-950/40 text-rose-500 shrink-0">
             <CalendarPlus className="w-5 h-5" />
           </div>
           <p className="text-[11px] text-gray-500 dark:text-slate-400 leading-snug">
-            Put every reminder, loan EMI, card due date and salary day into the iPhone's own Calendar. You get native iOS alerts 1
-            day before and at the due time — even when this app is closed.
+            Put every reminder, loan EMI, card due date and salary day into the iPhone's own Calendar — native iOS alerts, even
+            when this app is closed. Since your data lives only here, there's no auto-syncing feed: tap this again after making
+            changes to refresh it.
           </p>
         </div>
-        <div className="flex gap-2">
-          <a
-            href={api.calendarSubscribeUrl()}
-            className="flex-1 min-h-[2.75rem] rounded-xl bg-rose-500 active:bg-rose-600 text-white text-xs font-semibold flex items-center justify-center gap-1.5 shadow-md"
-          >
-            <CalendarPlus className="w-4 h-4" /> Subscribe (auto-sync)
-          </a>
-          <a
-            href={api.calendarDownloadUrl()}
-            className="flex-1 min-h-[2.75rem] rounded-xl bg-gray-100 dark:bg-slate-800 text-gray-800 dark:text-slate-200 text-xs font-semibold flex items-center justify-center gap-1.5"
-          >
-            <Download className="w-4 h-4" /> Add once (.ics)
-          </a>
-        </div>
-        <p className="text-[11px] text-gray-400">
-          Subscribe keeps the phone updated automatically whenever this PC is on. "Add once" imports what exists today.
-        </p>
+        <button
+          onClick={handleAddAllToCalendar}
+          disabled={busy !== null}
+          className="w-full min-h-[2.75rem] rounded-xl bg-rose-500 active:bg-rose-600 text-white text-xs font-semibold flex items-center justify-center gap-1.5 shadow-md disabled:opacity-60"
+        >
+          <CalendarPlus className="w-4 h-4" /> {busy === 'ics' ? 'Preparing…' : 'Add all to Calendar'}
+        </button>
       </div>
     </>
   );

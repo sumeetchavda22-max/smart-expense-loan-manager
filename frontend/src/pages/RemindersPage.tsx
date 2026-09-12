@@ -15,6 +15,22 @@ export const RemindersPage: React.FC<RemindersPageProps> = ({ onOpenQuickAdd }) 
     await refreshData();
   };
 
+  const handleAddToCalendar = async (id: string) => {
+    try {
+      await api.downloadReminderCalendar(id, currency);
+    } catch (e: any) {
+      alert(e.message || 'Could not create calendar file');
+    }
+  };
+
+  const handleAddAllToCalendar = async () => {
+    try {
+      await api.downloadFullCalendar(currency);
+    } catch (e: any) {
+      alert(e.message || 'Could not create calendar file');
+    }
+  };
+
   const getUrgencyBadge = (dueDateStr: string, isCompleted: boolean) => {
     if (isCompleted) {
       return {
@@ -76,19 +92,19 @@ export const RemindersPage: React.FC<RemindersPageProps> = ({ onOpenQuickAdd }) 
       </div>
 
       {/* Save everything to the iPhone's Calendar */}
-      <a
-        href={api.calendarSubscribeUrl()}
-        className="flex items-center gap-3 p-3 rounded-2xl liquid-glass-card active:scale-[0.99] transition-transform"
+      <button
+        onClick={handleAddAllToCalendar}
+        className="w-full flex items-center gap-3 p-3 rounded-2xl liquid-glass-card active:scale-[0.99] transition-transform text-left"
       >
         <div className="p-2 rounded-xl bg-rose-50 dark:bg-rose-950/40 text-rose-500 shrink-0">
           <CalendarPlus className="w-5 h-5" />
         </div>
         <div className="min-w-0 flex-1">
-          <p className="text-xs font-bold text-gray-900 dark:text-white">Sync all to iPhone Calendar</p>
+          <p className="text-xs font-bold text-gray-900 dark:text-white">Add all to iPhone Calendar</p>
           <p className="text-[11px] text-gray-500 dark:text-slate-400 truncate">Native iOS alerts — 1 day before & on the day</p>
         </div>
-        <span className="text-[11px] font-semibold text-rose-500 shrink-0">Subscribe →</span>
-      </a>
+        <span className="text-[11px] font-semibold text-rose-500 shrink-0">Add →</span>
+      </button>
 
       {/* Reminders List */}
       {reminders.length === 0 ? (
@@ -144,14 +160,14 @@ export const RemindersPage: React.FC<RemindersPageProps> = ({ onOpenQuickAdd }) 
                     {currency}{rem.amount.toLocaleString('en-IN')}
                   </span>
                   {!rem.isCompleted && (
-                    <a
-                      href={api.reminderIcsUrl(rem.id)}
+                    <button
+                      onClick={() => handleAddToCalendar(rem.id)}
                       className="w-10 h-10 flex items-center justify-center rounded-xl text-rose-500 active:bg-rose-100 dark:active:bg-rose-950/40"
                       aria-label="Add to iPhone Calendar"
                       title="Add to iPhone Calendar"
                     >
                       <CalendarPlus className="w-5 h-5" />
-                    </a>
+                    </button>
                   )}
                 </div>
               </div>

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import {
   Settings as SettingsIcon,
   Moon,
@@ -11,19 +11,26 @@ import {
   Globe,
   DollarSign,
   ShieldCheck,
+  Loader2,
+  CheckCircle2,
+  AlertTriangle,
 } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
 import { useFinance } from '../context/FinanceContext';
 import { useAuthPin } from '../context/AuthPinContext';
 import { AlertsSettings } from '../components/Settings/AlertsSettings';
+import * as api from '../services/api';
 
 export const SettingsPage: React.FC = () => {
   const { theme, setThemeMode } = useTheme();
-  const { currency, updateCurrency, triggerNotification } = useFinance();
+  const { currency, updateCurrency, triggerNotification, refreshData } = useFinance();
   const { pinRequired, setPin } = useAuthPin();
 
   const [newPinInput, setNewPinInput] = useState('');
   const [showPinSetup, setShowPinSetup] = useState(false);
+  const [dataBusy, setDataBusy] = useState<'backup' | 'restore' | null>(null);
+  const [dataMsg, setDataMsg] = useState<{ ok: boolean; text: string } | null>(null);
+  const restoreInputRef = useRef<HTMLInputElement>(null);
 
   const handleSavePin = (e: React.FormEvent) => {
     e.preventDefault();
@@ -56,8 +63,35 @@ export const SettingsPage: React.FC = () => {
     }
   };
 
-  const handleBackup = () => {
-    window.open('/api/backup', '_blank');
+  const flashData = (ok: boolean, text: string) => {
+    setDataMsg({ ok, text });
+    window.setTimeout(() => setDataMsg(null), 6000);
+  };
+
+  const handleBackup = async () => {
+    setDataBusy('backup');
+    try {
+      await api.downloadBackup();
+      flashData(true, 'Saved. Choose "Save to Files" to keep it on your iPhone.');
+    } catch (e: any) {
+      flashData(false, e.message || 'Backup failed');
+    } finally {
+      setDataBusy(null);
+    }
+  };
+
+  const handleRestoreFile = async (file: File) => {
+    if (!confirm('Restore will replace all current data with the contents of this backup file. Continue?')) return;
+    setDataBusy('restore');
+    try {
+      const { restored } = await api.restoreBackup(file);
+      await refreshData();
+      flashData(true, `Restored ${restored} record${restored === 1 ? '' : 's'} from backup.`);
+    } catch (e: any) {
+      flashData(false, e.message || 'That file could not be read as a SmartFinance backup.');
+    } finally {
+      setDataBusy(null);
+    }
   };
 
   return (
@@ -203,27 +237,67 @@ export const SettingsPage: React.FC = () => {
       {/* 4b. Email alerts + iPhone Calendar sync */}
       <AlertsSettings />
 
-      {/* 5. Database Backup & Local Storage */}
+      {/* 5. Data Management — this device's file manager integration */}
       <div className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-gray-100 dark:border-slate-800 shadow-sm space-y-3">
         <h2 className="text-xs font-bold text-gray-500 uppercase tracking-wider">Data Management</h2>
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-3">
-            <Database className="w-5 h-5 text-emerald-500" />
-            <div>
-              <p className="text-xs font-bold text-gray-900 dark:text-white">SQLite Database Backup</p>
-              <p className="text-[11px] text-gray-500">Download full JSON snapshot of all tables</p>
+        <p className="text-[11px] text-gray-500 dark:text-slate-400 -mt-1">
+          Everything is stored only on this device. Back up regularly, and restore the same file on a new phone to move your data over.
+        </p>
+
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center space-x-3 min-w-0">
+            <Database className="w-5 h-5 text-emerald-500 shrink-0" />
+            <div className="min-w-0">
+              <p className="text-xs font-bold text-gray-900 dark:text-white">Backup to Files</p>
+              <p className="text-[11px] text-gray-500">Full JSON snapshot, saved via the iPhone share sheet</p>
             </div>
           </div>
           <button
             onClick={handleBackup}
-            className="flex items-center space-x-1.5 px-3 py-1.5 rounded-xl bg-emerald-600 text-white text-xs font-semibold shadow-sm"
+            disabled={dataBusy !== null}
+            className="shrink-0 flex items-center gap-1.5 px-3 min-h-[2.5rem] rounded-xl bg-emerald-600 active:bg-emerald-700 text-white text-xs font-semibold shadow-sm disabled:opacity-60"
           >
-            <Download className="w-3.5 h-3.5" />
-            <span>Backup Now</span>
+            {dataBusy === 'backup' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5" />}
+            <span>Backup</span>
           </button>
         </div>
 
-        <div className="flex items-center justify-between pt-3 border-t border-gray-100 dark:border-slate-800">
+        <div className="flex items-center justify-between gap-3 pt-3 border-t border-gray-100 dark:border-slate-800">
+          <div className="flex items-center space-x-3 min-w-0">
+            <Upload className="w-5 h-5 text-blue-500 shrink-0" />
+            <div className="min-w-0">
+              <p className="text-xs font-bold text-gray-900 dark:text-white">Restore from a backup file</p>
+              <p className="text-[11px] text-gray-500">Pick a SmartFinance_Backup .json from Files</p>
+            </div>
+          </div>
+          <button
+            onClick={() => restoreInputRef.current?.click()}
+            disabled={dataBusy !== null}
+            className="shrink-0 flex items-center gap-1.5 px-3 min-h-[2.5rem] rounded-xl bg-blue-600 active:bg-blue-700 text-white text-xs font-semibold shadow-sm disabled:opacity-60"
+          >
+            {dataBusy === 'restore' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Upload className="w-3.5 h-3.5" />}
+            <span>Restore</span>
+          </button>
+          <input
+            ref={restoreInputRef}
+            type="file"
+            accept="application/json,.json"
+            className="hidden"
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              e.target.value = '';
+              if (file) handleRestoreFile(file);
+            }}
+          />
+        </div>
+
+        {dataMsg && (
+          <p className={`flex items-center gap-1.5 text-[11px] font-medium ${dataMsg.ok ? 'text-emerald-600' : 'text-red-600'}`}>
+            {dataMsg.ok ? <CheckCircle2 className="w-3.5 h-3.5 shrink-0" /> : <AlertTriangle className="w-3.5 h-3.5 shrink-0" />} {dataMsg.text}
+          </p>
+        )}
+
+        <div className="flex items-center justify-between gap-3 pt-3 border-t border-gray-100 dark:border-slate-800">
           <div>
             <p className="text-xs font-bold text-red-600">Reset All Data to 0</p>
             <p className="text-[11px] text-gray-500">Wipe all expenses, loans, cards & start from zero</p>
@@ -231,12 +305,11 @@ export const SettingsPage: React.FC = () => {
           <button
             onClick={async () => {
               if (confirm('Are you sure you want to reset all data to 0? This cannot be undone.')) {
-                await (await import('../services/api')).resetAllData();
-                await (await import('../context/FinanceContext')).useFinance;
+                await api.resetAllData();
                 window.location.reload();
               }
             }}
-            className="px-3 py-1.5 rounded-xl bg-red-600 text-white text-xs font-semibold shadow-sm"
+            className="shrink-0 px-3 min-h-[2.5rem] rounded-xl bg-red-600 active:bg-red-700 text-white text-xs font-semibold shadow-sm"
           >
             Reset to 0
           </button>

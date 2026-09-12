@@ -2,7 +2,9 @@ import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import { VitePWA } from 'vite-plugin-pwa';
 
-const BACKEND = `http://127.0.0.1:${process.env.BACKEND_PORT || 5000}`;
+// The app is local-first: all data lives in the browser's IndexedDB, so `vite dev`
+// needs no backend at all. The only server-side piece is the optional email relay
+// at api/send-email.ts, which only runs once deployed on Vercel (or via `vercel dev`).
 
 export default defineConfig({
   plugins: [
@@ -14,7 +16,7 @@ export default defineConfig({
         id: '/',
         name: 'Smart Expense & Loan Manager',
         short_name: 'SmartFinance',
-        description: 'Modern Mobile-first Personal Expense & Loan Management PWA',
+        description: 'Modern Mobile-first Personal Expense & Loan Management PWA — your data stays on your device',
         theme_color: '#0088b0',
         background_color: '#ffffff',
         display: 'standalone',
@@ -43,9 +45,9 @@ export default defineConfig({
         ],
       },
       workbox: {
-        // App shell is cached; API calls always go to the network so balances are never stale.
+        // The whole app shell is cacheable — there is no data API to keep off the cache anymore.
         globPatterns: ['**/*.{js,css,html,svg,png,woff2}'],
-        navigateFallbackDenylist: [/^\/api\//, /^\/uploads\//],
+        navigateFallbackDenylist: [/^\/api\//],
         runtimeCaching: [
           {
             urlPattern: /^https:\/\/fonts\.(googleapis|gstatic)\.com\/.*/i,
@@ -62,15 +64,5 @@ export default defineConfig({
   server: {
     host: '0.0.0.0',
     port: 3000,
-    proxy: {
-      '/api': {
-        target: BACKEND,
-        changeOrigin: true,
-      },
-      '/uploads': {
-        target: BACKEND,
-        changeOrigin: true,
-      },
-    },
   },
 });
