@@ -16,7 +16,7 @@ const ThemeContext = createContext<ThemeContextType>({
 
 export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [theme, setThemeState] = useState<ThemeMode>(() => {
-    return (localStorage.getItem('app_theme') as ThemeMode) || 'light';
+    return (localStorage.getItem('app_theme') as ThemeMode) || 'dark';
   });
 
   useEffect(() => {
@@ -34,7 +34,7 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     // Tint iOS Safari's chrome / PWA status bar to match the active theme
     const meta = document.querySelector<HTMLMetaElement>('meta[name="theme-color"]');
     if (meta) {
-      meta.content = theme === 'light' ? '#0088b0' : theme === 'dark' ? '#0f172a' : '#000000';
+      meta.content = theme === 'light' ? '#0088b0' : theme === 'dark' ? '#0f131d' : '#000000';
     }
   }, [theme]);
 

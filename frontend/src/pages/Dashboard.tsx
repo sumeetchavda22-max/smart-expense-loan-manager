@@ -1,17 +1,4 @@
 import React from 'react';
-import {
-  Landmark,
-  CreditCard,
-  Bell,
-  TrendingUp,
-  Receipt,
-  Briefcase,
-  ChevronRight,
-  Wallet,
-  Banknote,
-  ArrowRightLeft,
-  CalendarClock,
-} from 'lucide-react';
 import { useFinance } from '../context/FinanceContext';
 import { ExpensePieChart, IncomeVsExpenseChart, MonthlyTrendChart } from '../components/Charts/DashboardCharts';
 
@@ -19,6 +6,11 @@ interface DashboardProps {
   onOpenQuickAdd: (tab?: string) => void;
   onNavigate?: (tab: string) => void;
 }
+
+// Design-system tokens (text-primary, surface-dim, slate-border, etc.) are tuned for the
+// dark theme shown in the reference mockup. Every usage below is paired with a readable
+// light-mode fallback (text-gray-900, bg-gray-50, border-gray-100, ...) so the Light theme
+// option in Settings stays fully legible — only the `dark:` variant matches the reference.
 
 const fmt = (n: number) => (n ?? 0).toLocaleString('en-IN', { maximumFractionDigits: 0 });
 
@@ -29,253 +21,367 @@ const greeting = () => {
   return 'Good evening';
 };
 
+const daysUntil = (dateStr: string) => {
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const due = new Date(dateStr);
+  const dueDay = new Date(due.getFullYear(), due.getMonth(), due.getDate());
+  return Math.round((dueDay.getTime() - today.getTime()) / 86400000);
+};
+
 const quickActions = [
-  { id: 'expense', label: 'Expense', icon: Receipt, tone: 'bg-red-50 dark:bg-red-950/40 text-red-500' },
-  { id: 'salary', label: 'Salary', icon: Briefcase, tone: 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-500' },
-  { id: 'loan', label: 'Loan', icon: Landmark, tone: 'bg-amber-50 dark:bg-amber-950/40 text-amber-500' },
-  { id: 'credit', label: 'Card', icon: CreditCard, tone: 'bg-blue-50 dark:bg-blue-950/40 text-blue-500' },
-  { id: 'emi', label: 'Pay EMI', icon: Banknote, tone: 'bg-purple-50 dark:bg-purple-950/40 text-purple-500' },
-  { id: 'reminder', label: 'Reminder', icon: Bell, tone: 'bg-indigo-50 dark:bg-indigo-950/40 text-indigo-500' },
+  { id: 'expense', label: '+ Expense', icon: 'remove_circle_outline', tone: 'text-alert-coral' },
+  { id: 'salary', label: '+ Income', icon: 'add_circle_outline', tone: 'text-cashflow-emerald' },
+  { id: 'loan', label: 'Loan/EMI', icon: 'real_estate_agent', tone: 'text-brand-600 dark:text-primary' },
+  { id: 'credit', label: 'Cards', icon: 'credit_card', tone: 'text-blue-600 dark:text-secondary' },
+  { id: 'transfer', label: 'Transfer', icon: 'sync_alt', tone: 'text-gray-900 dark:text-text-primary' },
 ];
 
 export const Dashboard: React.FC<DashboardProps> = ({ onOpenQuickAdd, onNavigate }) => {
-  const { dashboard, loading, currency } = useFinance();
+  const { dashboard, loading, currency, loans, expenses, salaries } = useFinance();
 
   if (loading) {
     return (
       <div className="space-y-4 p-4 max-w-4xl mx-auto">
-        <div className="h-44 rounded-3xl shimmer" />
-        <div className="grid grid-cols-3 gap-2">
-          <div className="h-20 rounded-2xl shimmer" />
-          <div className="h-20 rounded-2xl shimmer" />
-          <div className="h-20 rounded-2xl shimmer" />
+        <div className="h-44 rounded-xl shimmer" />
+        <div className="grid grid-cols-5 gap-2">
+          {Array.from({ length: 5 }).map((_, i) => <div key={i} className="h-16 rounded-full shimmer" />)}
         </div>
-        <div className="h-28 rounded-2xl shimmer" />
-        <div className="h-28 rounded-2xl shimmer" />
+        <div className="h-28 rounded-xl shimmer" />
+        <div className="h-28 rounded-xl shimmer" />
       </div>
     );
   }
 
   const d = dashboard || {
-    currentBalance: 0,
-    totalSalary: 0,
-    totalExpenses: 0,
-    totalMonthExpenses: 0,
-    totalLoanBalance: 0,
-    totalMonthlyEMI: 0,
-    savings: 0,
-    cashInHand: 0,
-    bankBalance: 0,
-    totalCreditCardDue: 0,
-    upcomingPayments: [],
-    todayRemindersCount: 0,
-    todayReminders: [],
-    monthlyBudget: 0,
-    monthlyRemaining: 0,
-    pieChartData: [],
+    currentBalance: 0, totalSalary: 0, totalExpenses: 0, totalMonthExpenses: 0, totalLoanBalance: 0,
+    totalMonthlyEMI: 0, savings: 0, cashInHand: 0, bankBalance: 0, totalCreditCardDue: 0,
+    upcomingPayments: [], todayRemindersCount: 0, todayReminders: [], monthlyBudget: 0,
+    monthlyRemaining: 0, pieChartData: [], monthlyTrend: undefined,
   };
 
   const today = new Date();
   const monthLabel = today.toLocaleDateString('en-IN', { month: 'long', year: 'numeric' });
   const spendRatio = d.totalSalary > 0 ? Math.min(100, Math.round((d.totalMonthExpenses / d.totalSalary) * 100)) : 0;
+  const cashflowStatus =
+    spendRatio >= 90 ? { label: 'Overspending', tone: 'text-alert-coral' } :
+    spendRatio >= 70 ? { label: 'Moderate Spend', tone: 'text-warning-amber' } :
+    { label: 'Healthy Cashflow', tone: 'text-cashflow-emerald' };
+
+  // Month-over-month expense trend, derived from the existing 6-month series — the honest
+  // analogue of a "net worth growth" badge, since we don't keep historical net-worth snapshots.
+  const trend = d.monthlyTrend?.data || [];
+  const prevMonthExp = trend.length >= 2 ? trend[trend.length - 2] : 0;
+  const curMonthExp = trend.length >= 1 ? trend[trend.length - 1] : d.totalMonthExpenses;
+  const trendPct = prevMonthExp > 0 ? Math.round(((curMonthExp - prevMonthExp) / prevMonthExp) * 100) : null;
+
+  const activeLoans = (loans || []).filter((l) => l.status === 'ACTIVE').sort((a, b) => a.nextDueDate.localeCompare(b.nextDueDate));
+  const topLoan = activeLoans[0];
+  const otherLoans = activeLoans.slice(1, 3);
+
+  // Unified recent activity feed: expenses (debit) + salary credits, newest first.
+  type Tx = { id: string; title: string; sub: string; amount: number; credit: boolean; icon: string; tone: string; ring: string; date: string };
+  const txs: Tx[] = [
+    ...(expenses || []).slice(0, 8).map((e) => ({
+      id: `e-${e.id}`, title: e.title, sub: `${e.category?.name || 'Expense'} • ${new Date(e.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}`,
+      amount: e.amount, credit: false, icon: 'shopping_cart', tone: 'text-alert-coral', ring: 'bg-alert-coral/15 border-alert-coral/30',
+      date: e.date,
+    })),
+    ...(salaries || []).slice(0, 4).map((s) => ({
+      id: `s-${s.id}`, title: s.companyName, sub: `Income • ${new Date(s.paymentDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}`,
+      amount: s.inHandSalary, credit: true, icon: 'payments', tone: 'text-cashflow-emerald', ring: 'bg-cashflow-emerald/15 border-cashflow-emerald/30',
+      date: s.paymentDate,
+    })),
+  ]
+    .sort((a, b) => b.date.localeCompare(a.date))
+    .slice(0, 4);
 
   return (
     <div className="space-y-4 pb-nav max-w-4xl mx-auto px-3.5 xs:px-4 pt-3">
-      {/* Greeting row */}
-      <div className="flex items-end justify-between px-0.5">
-        <div>
-          <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-500 dark:text-slate-400">{greeting()}</p>
-          <h2 className="text-lg font-bold text-gray-900 dark:text-white leading-tight">Your money, {monthLabel}</h2>
+      {/* Month chip + live badge */}
+      <div className="flex items-center justify-between">
+        <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full liquid-glass text-gray-900 dark:text-text-primary text-body-sm">
+          <span className="material-symbols-outlined text-brand-600 dark:text-primary text-sm">calendar_month</span>
+          <span className="font-medium">{monthLabel}</span>
         </div>
-        <button
-          onClick={() => onNavigate?.('calendar')}
-          className="w-10 h-10 rounded-xl liquid-glass-card flex items-center justify-center text-brand-600 dark:text-brand-400 active:scale-95"
-          aria-label="Open calendar"
-        >
-          <CalendarClock className="w-5 h-5" />
-        </button>
+        <div className="inline-flex items-center gap-1 text-label-caps font-label-caps text-gray-500 dark:text-text-secondary bg-gray-100 dark:bg-surface-container-low px-2 py-1 rounded-md border border-gray-200 dark:border-slate-border">
+          <span className="inline-block w-1.5 h-1.5 rounded-full bg-cashflow-emerald" />
+          {greeting().toUpperCase()}
+        </div>
       </div>
 
-      {/* Today's Reminder Alert Banner */}
-      {d.todayRemindersCount > 0 && (
-        <div className="p-3 rounded-2xl bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-800 flex items-center gap-3 shadow-sm">
-          <div className="p-2.5 rounded-xl bg-red-500 text-white shrink-0 animate-pulse">
-            <Bell className="w-4 h-4" />
-          </div>
-          <div className="min-w-0 flex-1">
-            <p className="text-xs font-bold text-red-700 dark:text-red-300">
-              {d.todayRemindersCount} payment{d.todayRemindersCount > 1 ? 's' : ''} due today
-            </p>
-            <p className="text-[11px] text-red-600 dark:text-red-400 truncate">
-              {d.todayReminders[0]?.title} · {currency}{fmt(d.todayReminders[0]?.amount ?? 0)}
-            </p>
-          </div>
-          <button
-            onClick={() => onOpenQuickAdd('emi')}
-            className="shrink-0 min-h-[2.5rem] px-3.5 rounded-xl bg-red-600 active:bg-red-700 text-white text-xs font-semibold shadow-md"
-          >
-            Pay now
-          </button>
-        </div>
-      )}
-
-      {/* Main Net Balance Card */}
-      <div className="p-4 xs:p-5 rounded-3xl bg-gradient-to-tr from-brand-700 via-brand-600 to-accent2-500 text-white shadow-xl shadow-brand-500/20 relative overflow-hidden net-worth-card">
-        <div className="absolute -right-10 -bottom-10 w-44 h-44 rounded-full bg-white/10 blur-2xl pointer-events-none" />
-        <div className="absolute -left-6 -top-10 w-32 h-32 rounded-full bg-white/10 blur-2xl pointer-events-none" />
-        <div className="relative z-10 space-y-3">
-          <div className="flex justify-between items-center">
-            <span className="text-[11px] font-semibold text-white/80 uppercase tracking-wider">Net balance</span>
-            <span className="text-[10px] px-2.5 py-1 rounded-full bg-white/20 backdrop-blur-md text-white font-medium">
-              Live · Local DB
-            </span>
+      {/* Hero Net Balance Card */}
+      <section className="liquid-glass rounded-xl p-4 xs:p-5 relative overflow-hidden shadow-lg border border-gray-200 dark:border-slate-border net-worth-card">
+        <div className="absolute -right-8 -top-8 w-32 h-32 bg-primary/10 rounded-full blur-2xl pointer-events-none" />
+        <div className="relative z-10">
+          <div className="flex items-center justify-between mb-1">
+            <span className="text-label-caps font-label-caps text-gray-500 dark:text-text-secondary uppercase">Total Net Balance</span>
+            {trendPct !== null && (
+              <span
+                className={`inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full font-body-sm text-body-sm font-semibold border ${
+                  trendPct <= 0 ? 'bg-cashflow-emerald/15 text-cashflow-emerald border-cashflow-emerald/20' : 'bg-alert-coral/15 text-alert-coral border-alert-coral/20'
+                }`}
+                title="Change in this month's spending vs last month"
+              >
+                <span className="material-symbols-outlined text-xs">{trendPct <= 0 ? 'trending_down' : 'trending_up'}</span>
+                {trendPct > 0 ? '+' : ''}{trendPct}%
+              </span>
+            )}
           </div>
 
-          <div>
-            <p className="text-[2rem] xs:text-4xl font-extrabold tracking-tight tabular-nums leading-none">
+          <div className="mb-3">
+            <button onClick={() => onNavigate?.('accounts')} className="font-display-lg-mobile text-display-lg-mobile text-gray-900 dark:text-text-primary tracking-tight text-left tabular-nums">
               {currency}{fmt(d.currentBalance)}
-            </p>
-
-            <button
-              onClick={() => onNavigate?.('accounts')}
-              className="mt-2.5 -ml-1 px-1 min-h-[2.25rem] text-[11px] xs:text-xs text-white/85 flex items-center gap-1 text-left active:opacity-70"
-            >
-              <Wallet className="w-3.5 h-3.5 shrink-0" />
-              <span className="tabular-nums">Bank {currency}{fmt(d.bankBalance)} · Cash {currency}{fmt(d.cashInHand)}</span>
-              <ChevronRight className="w-3.5 h-3.5 shrink-0" />
             </button>
           </div>
 
-          {/* Spend-vs-income meter */}
-          <div className="space-y-1">
-            <div className="flex justify-between text-[10px] text-white/75 font-medium">
-              <span>Spent {spendRatio}% of this month's income</span>
-              <span className="tabular-nums">{currency}{fmt(d.totalMonthExpenses)} / {currency}{fmt(d.totalSalary)}</span>
+          {/* Account breakdown */}
+          <div className="grid grid-cols-2 gap-2 pt-2 border-t border-gray-200 dark:border-slate-border">
+            <button onClick={() => onNavigate?.('accounts')} className="bg-gray-50/80 dark:bg-surface-dim/70 rounded-lg p-2 border border-gray-200 dark:border-slate-border flex items-center justify-between text-left active:scale-[0.98] transition-transform">
+              <div className="min-w-0">
+                <span className="text-label-caps font-label-caps text-gray-500 dark:text-text-secondary block">Bank Accounts</span>
+                <span className="font-label-numeric-md text-label-numeric-md text-gray-900 dark:text-text-primary tabular-nums">{currency}{fmt(d.bankBalance)}</span>
+              </div>
+              <span className="material-symbols-outlined text-blue-600 dark:text-secondary text-lg shrink-0">account_balance</span>
+            </button>
+            <button onClick={() => onNavigate?.('accounts')} className="bg-gray-50/80 dark:bg-surface-dim/70 rounded-lg p-2 border border-gray-200 dark:border-slate-border flex items-center justify-between text-left active:scale-[0.98] transition-transform">
+              <div className="min-w-0">
+                <span className="text-label-caps font-label-caps text-gray-500 dark:text-text-secondary block">Cash Wallet</span>
+                <span className="font-label-numeric-md text-label-numeric-md text-gray-900 dark:text-text-primary tabular-nums">{currency}{fmt(d.cashInHand)}</span>
+              </div>
+              <span className="material-symbols-outlined text-cashflow-emerald text-lg shrink-0">wallet</span>
+            </button>
+          </div>
+
+          {/* Cashflow gauge */}
+          <div className="mt-3.5 pt-3 border-t border-gray-200/70 dark:border-slate-border/70">
+            <div className="flex items-center justify-between text-body-sm font-body-sm mb-1.5 gap-2">
+              <span className="text-gray-500 dark:text-text-secondary flex items-center gap-1 truncate">
+                <span className="w-1.5 h-1.5 rounded-full bg-cashflow-emerald shrink-0" />
+                Salary: <strong className="text-gray-900 dark:text-text-primary font-semibold tabular-nums">{currency}{fmt(d.totalSalary)}</strong>
+              </span>
+              <span className="text-gray-500 dark:text-text-secondary shrink-0 tabular-nums">
+                Spent: <strong className="text-gray-900 dark:text-text-primary font-semibold">{currency}{fmt(d.totalMonthExpenses)}</strong> ({spendRatio}%)
+              </span>
             </div>
-            <div className="h-1.5 rounded-full bg-white/20 overflow-hidden">
+            <div className="w-full h-2 rounded-full bg-gray-200 dark:bg-slate-800 overflow-hidden relative">
               <div
-                className={`h-full rounded-full transition-all duration-500 ${spendRatio >= 90 ? 'bg-red-300' : spendRatio >= 70 ? 'bg-amber-300' : 'bg-emerald-300'}`}
+                className="h-full bg-gradient-to-r from-growth-teal via-primary to-cashflow-emerald rounded-full transition-all duration-500"
                 style={{ width: `${spendRatio}%` }}
               />
             </div>
-          </div>
-
-          {/* Quick metrics */}
-          <div className="grid grid-cols-3 gap-1 pt-2.5 border-t border-white/20">
-            <button onClick={() => onNavigate?.('salary')} className="p-1.5 min-h-[3rem] rounded-xl active:bg-white/10 text-left">
-              <p className="text-[10px] text-white/75 uppercase font-medium">Salary</p>
-              <p className="text-sm font-bold text-emerald-300 tabular-nums">+{currency}{fmt(d.totalSalary)}</p>
-            </button>
-            <button onClick={() => onNavigate?.('expenses')} className="p-1.5 min-h-[3rem] rounded-xl active:bg-white/10 text-left">
-              <p className="text-[10px] text-white/75 uppercase font-medium">Expenses</p>
-              <p className="text-sm font-bold text-red-300 tabular-nums">-{currency}{fmt(d.totalMonthExpenses)}</p>
-            </button>
-            <button onClick={() => onNavigate?.('reports')} className="p-1.5 min-h-[3rem] rounded-xl active:bg-white/10 text-left">
-              <p className="text-[10px] text-white/75 uppercase font-medium">Savings</p>
-              <p className="text-sm font-bold text-amber-300 tabular-nums">{currency}{fmt(d.savings)}</p>
-            </button>
+            <div className="flex justify-between items-center mt-1">
+              <span className={`text-label-caps font-label-caps ${cashflowStatus.tone}`}>{cashflowStatus.label}</span>
+              <span className="text-label-caps font-label-caps text-gray-500 dark:text-text-secondary tabular-nums">
+                {currency}{fmt(Math.max(0, d.totalSalary - d.totalMonthExpenses))} remaining
+              </span>
+            </div>
           </div>
         </div>
-      </div>
+      </section>
 
-      {/* Quick Actions */}
-      <section className="space-y-2">
-        <h3 className="text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-slate-400 px-1">Quick actions</h3>
-        <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
-          {quickActions.map(({ id, label, icon: Icon, tone }) => (
-            <button
-              key={id}
-              onClick={() => onOpenQuickAdd(id)}
-              className="min-h-[4.5rem] p-2 rounded-2xl liquid-glass-card flex flex-col items-center justify-center text-center gap-1.5 active:scale-95 transition-transform"
-            >
-              <div className={`p-2 rounded-xl ${tone}`}>
-                <Icon className="w-5 h-5" />
+      {/* Quick Action Row */}
+      <section>
+        <div className="grid grid-cols-5 gap-2 text-center">
+          {quickActions.map(({ id, label, icon, tone }) => (
+            <button key={id} onClick={() => onOpenQuickAdd(id)} className="group flex flex-col items-center gap-1 active:scale-95 transition-transform">
+              <div className={`w-12 h-12 rounded-full liquid-glass-card flex items-center justify-center ${tone} shadow-sm`}>
+                <span className="material-symbols-outlined text-xl">{icon}</span>
               </div>
-              <span className="text-[11px] font-semibold text-gray-800 dark:text-slate-200 leading-none">+ {label}</span>
+              <span className="font-body-sm text-body-sm text-gray-500 dark:text-text-secondary group-active:text-gray-900 dark:group-active:text-text-primary transition-colors leading-tight">{label}</span>
             </button>
           ))}
         </div>
       </section>
 
-      {/* Liabilities summary */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        <button
-          onClick={() => onNavigate?.('loans')}
-          className="p-4 rounded-2xl liquid-glass-card border border-gray-100 dark:border-slate-800/80 shadow-sm text-left active:scale-[0.98] transition-transform"
-        >
-          <div className="flex items-center justify-between">
+      {/* Bill / Reminder Due Alert */}
+      {d.todayRemindersCount > 0 && (
+        <section className="rounded-xl liquid-glass p-3.5 border-l-4 border-l-alert-coral relative overflow-hidden shadow-lg">
+          <div className="flex items-center justify-between mb-2">
             <div className="flex items-center gap-2">
-              <div className="p-1.5 rounded-lg bg-amber-50 dark:bg-amber-950/40 text-amber-500">
-                <Landmark className="w-4 h-4" />
-              </div>
-              <span className="text-xs font-semibold text-gray-600 dark:text-slate-300">Active loans</span>
+              <span className="material-symbols-outlined text-alert-coral text-lg">error_outline</span>
+              <span className="text-label-caps font-label-caps text-alert-coral uppercase tracking-wider">Payment Due Notice</span>
             </div>
-            <ChevronRight className="w-4 h-4 text-gray-400" />
+            <span className="text-body-sm font-body-sm font-semibold text-alert-coral bg-alert-coral/10 px-2 py-0.5 rounded-full border border-alert-coral/20">
+              Due Today
+            </span>
           </div>
-          <p className="mt-2 text-2xl font-extrabold text-gray-900 dark:text-white tabular-nums">
-            {currency}{fmt(d.totalLoanBalance)}
-          </p>
-          <div className="mt-1 flex justify-between items-center text-[11px] text-gray-500 dark:text-slate-400">
-            <span className="tabular-nums">Monthly EMI {currency}{fmt(d.totalMonthlyEMI)}</span>
-            <span className="text-amber-500 font-semibold">View loans</span>
+          <div className="flex items-center justify-between gap-3">
+            <div className="min-w-0">
+              <h2 className="font-headline-sm text-headline-sm text-gray-900 dark:text-text-primary font-bold truncate">{d.todayReminders[0]?.title}</h2>
+              <p className="font-body-sm text-body-sm text-gray-500 dark:text-text-secondary mt-0.5">
+                Amount: <strong className="text-gray-900 dark:text-text-primary font-label-numeric-md text-label-numeric-md tabular-nums">{currency}{fmt(d.todayReminders[0]?.amount || 0)}</strong>
+              </p>
+            </div>
+            <button
+              onClick={() => onNavigate?.('reminders')}
+              className="shrink-0 bg-alert-coral active:opacity-90 text-slate-950 font-body-sm text-body-sm font-bold px-3.5 py-2 rounded-lg transition-transform active:scale-95 shadow-md"
+            >
+              Pay Now
+            </button>
           </div>
-        </button>
+        </section>
+      )}
 
-        <button
-          onClick={() => onNavigate?.('credit')}
-          className="p-4 rounded-2xl liquid-glass-card border border-gray-100 dark:border-slate-800/80 shadow-sm text-left active:scale-[0.98] transition-transform"
-        >
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <div className="p-1.5 rounded-lg bg-blue-50 dark:bg-blue-950/40 text-blue-500">
-                <CreditCard className="w-4 h-4" />
-              </div>
-              <span className="text-xs font-semibold text-gray-600 dark:text-slate-300">Credit card dues</span>
+      {/* Active Loans & EMI Snapshot */}
+      {topLoan && (
+        <section className="liquid-glass rounded-xl p-4 border border-gray-200 dark:border-slate-border">
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-1.5">
+              <span className="material-symbols-outlined text-brand-600 dark:text-primary text-base">account_balance</span>
+              <h2 className="font-label-caps text-label-caps text-gray-500 dark:text-text-secondary uppercase">Active Loans &amp; EMI Snapshot</h2>
             </div>
-            <ChevronRight className="w-4 h-4 text-gray-400" />
+            <button onClick={() => onNavigate?.('loans')} className="text-body-sm font-body-sm px-2 py-0.5 rounded-full bg-gray-100 dark:bg-slate-800 text-gray-500 dark:text-text-secondary border border-gray-200 dark:border-slate-border">
+              {activeLoans.length} Active
+            </button>
           </div>
-          <p className="mt-2 text-2xl font-extrabold text-gray-900 dark:text-white tabular-nums">
-            {currency}{fmt(d.totalCreditCardDue)}
-          </p>
-          <div className="mt-1 flex justify-between items-center text-[11px] text-gray-500 dark:text-slate-400">
-            <span>Total outstanding</span>
-            <span className="text-blue-500 font-semibold">View cards</span>
+
+          <div className="bg-gray-50/80 dark:bg-surface-dim/80 rounded-lg p-3 border border-gray-200 dark:border-slate-border/80">
+            <div className="flex items-start justify-between gap-2 mb-2">
+              <div className="min-w-0">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="font-headline-sm text-headline-sm text-gray-900 dark:text-text-primary font-bold truncate">{topLoan.name}</span>
+                  {(() => {
+                    const days = daysUntil(topLoan.nextDueDate);
+                    return (
+                      <span className={`text-label-caps font-label-caps px-2 py-0.5 rounded border ${days <= 3 ? 'text-alert-coral bg-alert-coral/15 border-alert-coral/30' : 'text-warning-amber bg-warning-amber/15 border-warning-amber/30'}`}>
+                        {days <= 0 ? 'Due today' : `Due in ${days} day${days === 1 ? '' : 's'}`}
+                      </span>
+                    );
+                  })()}
+                </div>
+                <p className="font-body-sm text-body-sm text-gray-500 dark:text-text-secondary mt-0.5">
+                  EMI Amount: <span className="font-semibold text-gray-900 dark:text-text-primary tabular-nums">{currency}{fmt(topLoan.emiAmount)} /mo</span>
+                </p>
+              </div>
+              <button
+                onClick={() => onOpenQuickAdd('emi')}
+                className="shrink-0 bg-cashflow-emerald active:opacity-90 text-slate-950 font-body-sm text-body-sm font-bold px-3 py-1.5 rounded-lg active:scale-95 transition-transform shadow-md"
+              >
+                Pay EMI
+              </button>
+            </div>
+            <div className="mt-2.5">
+              {(() => {
+                const pct = topLoan.loanPeriodMonths > 0 ? Math.round((topLoan.paidEmis / topLoan.loanPeriodMonths) * 100) : 0;
+                return (
+                  <>
+                    <div className="flex justify-between text-body-sm font-body-sm mb-1">
+                      <span className="text-gray-500 dark:text-text-secondary">Progress: <strong className="text-cashflow-emerald">{pct}% paid off</strong></span>
+                      <span className="text-gray-500 dark:text-text-secondary">Remaining: <strong className="text-gray-900 dark:text-text-primary tabular-nums">{currency}{fmt(topLoan.outstandingBalance)}</strong></span>
+                    </div>
+                    <div className="w-full h-2 rounded-full bg-gray-200 dark:bg-slate-800 overflow-hidden">
+                      <div className="h-full bg-gradient-to-r from-growth-teal to-cashflow-emerald rounded-full" style={{ width: `${pct}%` }} />
+                    </div>
+                  </>
+                );
+              })()}
+            </div>
           </div>
+
+          {otherLoans.map((l) => {
+            const pct = l.loanPeriodMonths > 0 ? Math.round((l.paidEmis / l.loanPeriodMonths) * 100) : 0;
+            return (
+              <button
+                key={l.id}
+                onClick={() => onNavigate?.('loans')}
+                className="w-full mt-2.5 flex items-center justify-between bg-gray-50/60 dark:bg-surface-dim/50 rounded-lg px-3 py-2 border border-gray-200 dark:border-slate-border text-left active:scale-[0.99] transition-transform"
+              >
+                <div className="flex items-center gap-2 min-w-0">
+                  <span className="material-symbols-outlined text-blue-600 dark:text-secondary text-base shrink-0">directions_car</span>
+                  <span className="font-body-sm text-body-sm text-gray-900 dark:text-text-primary font-medium truncate">{l.name}</span>
+                  <span className="text-label-caps font-label-caps text-gray-500 dark:text-text-secondary whitespace-nowrap">{currency}{fmt(l.emiAmount)}/mo • {pct}% paid</span>
+                </div>
+              </button>
+            );
+          })}
+        </section>
+      )}
+
+      {/* Loans & Credit Cards quick nav (totals) */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <button onClick={() => onNavigate?.('loans')} className="liquid-glass-card rounded-xl p-4 border border-gray-200 dark:border-slate-border text-left active:scale-[0.98] transition-transform">
+          <div className="flex items-center justify-between">
+            <span className="text-label-caps font-label-caps text-gray-500 dark:text-text-secondary uppercase flex items-center gap-1.5">
+              <span className="material-symbols-outlined text-warning-amber text-base">account_balance</span> Active loans
+            </span>
+            <span className="material-symbols-outlined text-gray-400 dark:text-text-secondary text-base">chevron_right</span>
+          </div>
+          <p className="mt-2 font-label-numeric-lg text-label-numeric-lg text-gray-900 dark:text-text-primary tabular-nums">{currency}{fmt(d.totalLoanBalance)}</p>
+          <p className="mt-1 text-body-sm font-body-sm text-gray-500 dark:text-text-secondary tabular-nums">Monthly EMI {currency}{fmt(d.totalMonthlyEMI)}</p>
+        </button>
+        <button onClick={() => onNavigate?.('credit')} className="liquid-glass-card rounded-xl p-4 border border-gray-200 dark:border-slate-border text-left active:scale-[0.98] transition-transform">
+          <div className="flex items-center justify-between">
+            <span className="text-label-caps font-label-caps text-gray-500 dark:text-text-secondary uppercase flex items-center gap-1.5">
+              <span className="material-symbols-outlined text-blue-600 dark:text-secondary text-base">credit_card</span> Credit card dues
+            </span>
+            <span className="material-symbols-outlined text-gray-400 dark:text-text-secondary text-base">chevron_right</span>
+          </div>
+          <p className="mt-2 font-label-numeric-lg text-label-numeric-lg text-gray-900 dark:text-text-primary tabular-nums">{currency}{fmt(d.totalCreditCardDue)}</p>
+          <p className="mt-1 text-body-sm font-body-sm text-gray-500 dark:text-text-secondary">Total outstanding</p>
         </button>
       </div>
 
-      {/* Upcoming dues — placed above charts: on a phone this is what you check most */}
-      <section className="p-4 rounded-2xl liquid-glass-card border border-gray-100 dark:border-slate-800 space-y-3">
-        <div className="flex justify-between items-center">
-          <h3 className="text-[11px] font-bold text-gray-800 dark:text-slate-200 uppercase tracking-wider">Upcoming dues</h3>
-          <button
-            onClick={() => onNavigate?.('reminders')}
-            className="min-h-[2.25rem] px-2 -mr-2 text-xs text-brand-600 dark:text-brand-400 font-semibold"
-          >
-            See all →
+      {/* Recent Transactions */}
+      <section className="liquid-glass rounded-xl p-4 border border-gray-200 dark:border-slate-border">
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="font-label-caps text-label-caps text-gray-500 dark:text-text-secondary uppercase">Recent Transactions</h2>
+          <button onClick={() => onNavigate?.('expenses')} className="text-brand-600 dark:text-primary font-body-sm text-body-sm font-medium flex items-center gap-0.5">
+            View All <span className="material-symbols-outlined text-sm">arrow_forward</span>
           </button>
         </div>
+        {txs.length === 0 ? (
+          <p className="text-body-sm font-body-sm text-gray-500 dark:text-text-secondary py-2">No transactions logged yet.</p>
+        ) : (
+          <div className="divide-y divide-gray-100 dark:divide-slate-border/50">
+            {txs.map((tx) => (
+              <div key={tx.id} className="py-2.5 flex items-center justify-between gap-3">
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className={`w-9 h-9 rounded-full border flex items-center justify-center shrink-0 ${tx.ring} ${tx.tone}`}>
+                    <span className="material-symbols-outlined text-lg">{tx.icon}</span>
+                  </div>
+                  <div className="min-w-0">
+                    <p className="font-body-md text-body-md text-gray-900 dark:text-text-primary font-medium truncate">{tx.title}</p>
+                    <p className="font-body-sm text-body-sm text-gray-500 dark:text-text-secondary truncate">{tx.sub}</p>
+                  </div>
+                </div>
+                <div className="text-right shrink-0">
+                  <p className={`font-label-numeric-md text-label-numeric-md font-bold tabular-nums ${tx.credit ? 'text-cashflow-emerald' : 'text-alert-coral'}`}>
+                    {tx.credit ? '+' : '-'}{currency}{fmt(tx.amount)}
+                  </p>
+                  <p className="text-label-caps font-label-caps text-gray-500 dark:text-text-secondary">{tx.credit ? 'Credit' : 'Debit'}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
 
+      {/* Upcoming Dues */}
+      <section className="liquid-glass rounded-xl p-4 border border-gray-200 dark:border-slate-border space-y-3">
+        <div className="flex justify-between items-center">
+          <h3 className="font-label-caps text-label-caps text-gray-500 dark:text-text-secondary uppercase">Upcoming dues</h3>
+          <button onClick={() => onNavigate?.('reminders')} className="text-body-sm font-body-sm text-brand-600 dark:text-primary font-semibold">See all →</button>
+        </div>
         {d.upcomingPayments.length === 0 ? (
-          <p className="text-xs text-gray-400 py-2">No upcoming due payment reminders.</p>
+          <p className="text-body-sm font-body-sm text-gray-500 dark:text-text-secondary py-2">No upcoming due payment reminders.</p>
         ) : (
           <div className="space-y-2">
             {d.upcomingPayments.slice(0, 5).map((rem) => (
               <button
                 key={rem.id}
                 onClick={() => onNavigate?.('reminders')}
-                className="w-full min-h-[3.5rem] p-3 rounded-xl bg-gray-50/70 dark:bg-slate-800/50 flex items-center justify-between gap-3 border-l-4 border-brand-500 text-left active:bg-gray-100 dark:active:bg-slate-800"
+                className="w-full min-h-[3.5rem] p-3 rounded-lg bg-gray-50/80 dark:bg-surface-dim/70 flex items-center justify-between gap-3 border-l-4 border-brand-600 dark:border-primary text-left active:bg-gray-100 dark:active:bg-surface-container"
               >
                 <div className="min-w-0">
-                  <p className="text-xs font-bold text-gray-900 dark:text-white truncate">{rem.title}</p>
-                  <p className="text-[11px] text-gray-500 dark:text-slate-400">
-                    {new Date(rem.dueDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
-                    {rem.dueTime ? ` · ${rem.dueTime}` : ''}
+                  <p className="font-body-md text-body-md font-bold text-gray-900 dark:text-text-primary truncate">{rem.title}</p>
+                  <p className="font-body-sm text-body-sm text-gray-500 dark:text-text-secondary">
+                    {new Date(rem.dueDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}{rem.dueTime ? ` · ${rem.dueTime}` : ''}
                   </p>
                 </div>
                 <div className="text-right shrink-0">
-                  <p className="text-xs font-bold text-brand-600 dark:text-brand-400 tabular-nums">{currency}{fmt(rem.amount)}</p>
-                  <span className="text-[10px] font-medium text-gray-400">{rem.type}</span>
+                  <p className="font-label-numeric-md text-label-numeric-md text-brand-600 dark:text-primary tabular-nums">{currency}{fmt(rem.amount)}</p>
+                  <span className="text-label-caps font-label-caps text-gray-500 dark:text-text-secondary">{rem.type}</span>
                 </div>
               </button>
             ))}
@@ -285,24 +391,21 @@ export const Dashboard: React.FC<DashboardProps> = ({ onOpenQuickAdd, onNavigate
 
       {/* Analytics */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <section className="p-4 rounded-2xl liquid-glass-card border border-gray-100 dark:border-slate-800">
-          <h3 className="text-[11px] font-bold text-gray-800 dark:text-slate-200 uppercase tracking-wider mb-3">
-            Expenses by category
-          </h3>
+        <section className="liquid-glass rounded-xl p-4 border border-gray-200 dark:border-slate-border">
+          <h3 className="font-label-caps text-label-caps text-gray-500 dark:text-text-secondary uppercase mb-3">Expenses by category</h3>
           <ExpensePieChart />
         </section>
-
-        <section className="p-4 rounded-2xl liquid-glass-card border border-gray-100 dark:border-slate-800">
-          <h3 className="text-[11px] font-bold text-gray-800 dark:text-slate-200 uppercase tracking-wider mb-3 flex items-center gap-1.5">
-            <ArrowRightLeft className="w-3.5 h-3.5 text-brand-600" /> Income vs expenses
+        <section className="liquid-glass rounded-xl p-4 border border-gray-200 dark:border-slate-border">
+          <h3 className="font-label-caps text-label-caps text-gray-500 dark:text-text-secondary uppercase mb-3 flex items-center gap-1.5">
+            <span className="material-symbols-outlined text-brand-600 dark:text-primary text-base">sync_alt</span> Income vs expenses
           </h3>
           <IncomeVsExpenseChart />
         </section>
       </div>
 
-      <section className="p-4 rounded-2xl liquid-glass-card border border-gray-100 dark:border-slate-800">
-        <h3 className="text-[11px] font-bold text-gray-800 dark:text-slate-200 uppercase tracking-wider mb-3 flex items-center gap-1.5">
-          <TrendingUp className="w-3.5 h-3.5 text-brand-600" /> 6-month expense trend
+      <section className="liquid-glass rounded-xl p-4 border border-gray-200 dark:border-slate-border">
+        <h3 className="font-label-caps text-label-caps text-gray-500 dark:text-text-secondary uppercase mb-3 flex items-center gap-1.5">
+          <span className="material-symbols-outlined text-brand-600 dark:text-primary text-base">monitoring</span> 6-month expense trend
         </h3>
         <MonthlyTrendChart />
       </section>
