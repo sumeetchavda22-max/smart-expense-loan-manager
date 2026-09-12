@@ -1,0 +1,17 @@
+{
+  "name": "smart-expense-loan-manager",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Smart Expense & Loan Manager - Mobile-first PWA for Personal Finance",
+  "scripts": {
+    "dev:backend": "cd backend && npm run dev",
+    "dev:frontend": "cd frontend && npm run dev",
+    "build:backend": "cd backend && npm run build",
+    "build:frontend": "cd frontend && npm run build",
+    "build": "npm run build:backend && npm run build:frontend",
+    "start:backend": "cd backend && npm run start"
+  },
+  "keywords": ["finance", "expense", "pwa", "loan", "salary", "credit-card", "react"],
+  "author": "",
+  "license": "MIT"
+}

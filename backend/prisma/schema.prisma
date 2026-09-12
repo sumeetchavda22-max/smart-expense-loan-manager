@@ -1,0 +1,228 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+model Settings {
+  id                    String   @id @default("default-settings")
+  currency              String   @default("₹")
+  language              String   @default("en")
+  theme                 String   @default("light")
+  enableNotifications   Boolean  @default(true)
+  pinLockEnabled       Boolean  @default(false)
+  pinCode               String?
+  fingerprintEnabled    Boolean  @default(false)
+  autoBackup            Boolean  @default(true)
+  overspendingAlert     Boolean  @default(true)
+  lowBalanceThreshold   Float    @default(1000)
+  // Email reminder alerts (SMTP credentials live in backend/.env)
+  notifyEmail           String?
+  emailRemindersEnabled Boolean  @default(false)
+  emailDaysBefore       Int      @default(1)   // also alert N days before the due date
+  emailSendHour         Int      @default(8)   // local hour at which the daily digest goes out
+  lastEmailDigestDate   String?                // YYYY-MM-DD of the last digest sent (dedupe)
+  updatedAt             DateTime @updatedAt
+}
+
+model Account {
+  id              String         @id @default(uuid())
+  name            String
+  type            String         // CASH, SAVINGS, CURRENT, WALLET, UPI, CREDIT_CARD
+  balance         Float          @default(0)
+  accountNumber   String?
+  bankName        String?
+  isDefault       Boolean        @default(false)
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+  
+  expenses        Expense[]
+  salaries        Salary[]
+  transfersFrom   Transfer[]     @relation("FromAccount")
+  transfersTo     Transfer[]     @relation("ToAccount")
+  loanPayments    LoanPayment[]
+  creditPayments  CreditPayment[]
+}
+
+model Salary {
+  id                String   @id @default(uuid())
+  companyName       String
+  monthlySalary     Float
+  salaryDate        Int      // Day of month (1-31)
+  accountId         String
+  account           Account  @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  bonus             Float    @default(0)
+  overtime          Float    @default(0)
+  otherIncome       Float    @default(0)
+  pfDeduction       Float    @default(0)
+  profTax           Float    @default(0)
+  tdsDeduction      Float    @default(0)
+  otherDeductions   Float    @default(0)
+  netSalary         Float
+  inHandSalary      Float
+  month             String   // YYYY-MM
+  paymentDate       DateTime @default(now())
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+}
+
+model Category {
+  id          String    @id @default(uuid())
+  name        String    @unique
+  icon        String    @default("Tag")
+  color       String    @default("#3B82F6")
+  isSystem    Boolean   @default(false)
+  expenses    Expense[]
+  budgets     Budget[]
+}
+
+model Expense {
+  id            String    @id @default(uuid())
+  title         String
+  amount        Float
+  categoryId    String
+  category      Category  @relation(fields: [categoryId], references: [id])
+  paymentMethod String    // CASH, UPI, BANK, CARD
+  accountId     String?
+  account       Account?  @relation(fields: [accountId], references: [id])
+  date          DateTime  @default(now())
+  notes         String?
+  receiptUrl    String?
+  tags          String?   // Comma separated tags
+  isRecurring   Boolean   @default(false)
+  repeatFrequency String? // MONTHLY, WEEKLY, YEARLY
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
+
+model Loan {
+  id                 String        @id @default(uuid())
+  name               String
+  type               String        // PERSONAL, HOME, CAR, BIKE, GOLD, BUSINESS, EDUCATION, CREDIT, FRIEND
+  bankName           String?
+  amount             Float
+  interestRate       Float
+  loanPeriodMonths   Int
+  emiAmount          Float
+  paidEmis           Int           @default(0)
+  remainingEmis      Int
+  outstandingBalance Float
+  startDate          DateTime
+  nextDueDate        DateTime
+  status             String        @default("ACTIVE") // ACTIVE, COMPLETED, CLOSED
+  notes              String?
+  documents          String?       // JSON string or file path
+  createdAt          DateTime      @default(now())
+  updatedAt          DateTime      @updatedAt
+  
+  payments           LoanPayment[]
+}
+
+model LoanPayment {
+  id            String   @id @default(uuid())
+  loanId        String
+  loan          Loan     @relation(fields: [loanId], references: [id], onDelete: Cascade)
+  amount        Float
+  paymentDate   DateTime @default(now())
+  accountId     String?
+  account       Account? @relation(fields: [accountId], references: [id])
+  emiNumber     Int
+  principalPaid Float
+  interestPaid  Float
+  notes         String?
+  createdAt     DateTime @default(now())
+}
+
+model CreditCard {
+  id              String          @id @default(uuid())
+  cardName        String
+  bankName        String
+  cardLimit       Float
+  usedAmount      Float           @default(0)
+  availableLimit  Float
+  statementDate   Int             // Day of month (1-31)
+  dueDate         Int             // Day of month (1-31)
+  minimumDue      Float           @default(0)
+  totalDue        Float           @default(0)
+  interestRate    Float           @default(0)
+  rewardPoints    Int             @default(0)
+  lateFeeAmount   Float           @default(0)
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+  
+  payments        CreditPayment[]
+}
+
+model CreditPayment {
+  id           String     @id @default(uuid())
+  cardId       String
+  creditCard   CreditCard @relation(fields: [cardId], references: [id], onDelete: Cascade)
+  amount       Float
+  paymentDate  DateTime   @default(now())
+  accountId    String?
+  account      Account?   @relation(fields: [accountId], references: [id])
+  notes        String?
+  createdAt    DateTime   @default(now())
+}
+
+model Transfer {
+  id            String   @id @default(uuid())
+  fromAccountId String
+  fromAccount   Account  @relation("FromAccount", fields: [fromAccountId], references: [id])
+  toAccountId   String
+  toAccount     Account  @relation("ToAccount", fields: [toAccountId], references: [id])
+  amount        Float
+  date          DateTime @default(now())
+  notes         String?
+  createdAt     DateTime @default(now())
+}
+
+model Reminder {
+  id           String   @id @default(uuid())
+  title        String
+  type         String   // LOAN_EMI, CREDIT_CARD, ELECTRICITY, WATER, GAS, RECHARGE, INTERNET, INSURANCE, RENT, SALARY, INVESTMENT, CUSTOM
+  amount       Float
+  dueDate      DateTime
+  dueTime      String   @default("09:00")
+  repeat       String   @default("NONE") // NONE, DAILY, WEEKLY, MONTHLY, YEARLY
+  priority     String   @default("MEDIUM") // LOW, MEDIUM, HIGH
+  isNotified   Boolean  @default(false)
+  isCompleted  Boolean  @default(false)
+  notes        String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model Budget {
+  id         String   @id @default(uuid())
+  month      String   // YYYY-MM
+  categoryId String
+  category   Category @relation(fields: [categoryId], references: [id])
+  limit      Float
+  spent      Float    @default(0)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@unique([month, categoryId])
+}
+
+model Notification {
+  id        String   @id @default(uuid())
+  title     String
+  message   String
+  type      String   // REMINDER, OVERSPENDING, LOAN_DUE, SYSTEM
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
+}
+
+model Attachment {
+  id        String   @id @default(uuid())
+  fileName  String
+  filePath  String
+  fileType  String
+  fileSize  Int
+  createdAt DateTime @default(now())
+}

@@ -1,0 +1,125 @@
+import React, { useEffect, useState } from 'react';
+import { RefreshCw } from 'lucide-react';
+import { ThemeProvider } from './context/ThemeContext';
+import { AuthPinProvider } from './context/AuthPinContext';
+import { FinanceProvider, useFinance } from './context/FinanceContext';
+import { usePullToRefresh } from './hooks/usePullToRefresh';
+import { Navbar } from './components/Navigation/Navbar';
+import { BottomNav } from './components/Navigation/BottomNav';
+import { QuickAddModal } from './components/Modals/QuickAddModal';
+import { GlobalSearchModal } from './components/Modals/GlobalSearchModal';
+import { PINLockModal } from './components/Modals/PINLockModal';
+
+import { Dashboard } from './pages/Dashboard';
+import { ExpensesPage } from './pages/ExpensesPage';
+import { SalaryPage } from './pages/SalaryPage';
+import { LoansPage } from './pages/LoansPage';
+import { CreditCardsPage } from './pages/CreditCardsPage';
+import { AccountsPage } from './pages/AccountsPage';
+import { RemindersPage } from './pages/RemindersPage';
+import { CalendarPage } from './pages/CalendarPage';
+import { ReportsPage } from './pages/ReportsPage';
+import { CalculatorsPage } from './pages/CalculatorsPage';
+import { SettingsPage } from './pages/SettingsPage';
+
+export const AppContent: React.FC = () => {
+  const [activeTab, setActiveTab] = useState<string>('dashboard');
+  const [quickAddOpen, setQuickAddOpen] = useState<boolean>(false);
+  const [quickAddDefaultTab, setQuickAddDefaultTab] = useState<string>('expense');
+  const [searchOpen, setSearchOpen] = useState<boolean>(false);
+  const { refreshData } = useFinance();
+  const { pull, refreshing, ready } = usePullToRefresh(refreshData);
+
+  // Each tab is its own "screen" on a phone: always start it from the top
+  useEffect(() => {
+    window.scrollTo({ top: 0 });
+  }, [activeTab]);
+
+  const handleOpenQuickAdd = (tab: string = 'expense') => {
+    setQuickAddDefaultTab(tab);
+    setQuickAddOpen(true);
+  };
+
+  return (
+    <div className="min-h-dvh bg-gray-50 dark:bg-slate-950 text-gray-900 dark:text-slate-100 flex flex-col">
+      {/* Security PIN Lock Screen Overlay */}
+      <PINLockModal />
+
+      {/* Pull-to-refresh indicator (touch devices) */}
+      {(pull > 0 || refreshing) && (
+        <div
+          className="ptr-indicator"
+          style={{ opacity: Math.min(1, pull / 40), transform: `translateX(-50%) translateY(${Math.min(pull, 80) - 40}px)` }}
+          aria-hidden="true"
+        >
+          <RefreshCw
+            className={`w-4 h-4 ${refreshing ? 'ptr-spin' : ''}`}
+            style={refreshing ? undefined : { transform: `rotate(${pull * 3}deg)`, opacity: ready ? 1 : 0.6 }}
+          />
+        </div>
+      )}
+
+      {/* Top Navbar */}
+      <Navbar
+        onOpenSearch={() => setSearchOpen(true)}
+        onOpenCalendar={() => setActiveTab('calendar')}
+        onOpenCalculators={() => setActiveTab('calculators')}
+      />
+
+      {/* Page Routing */}
+      <main
+        className="flex-1"
+        style={pull > 0 ? { transform: `translateY(${Math.min(pull, 80) * 0.5}px)`, transition: refreshing ? 'transform 200ms' : undefined } : undefined}
+      >
+        {activeTab === 'dashboard' && (
+          <Dashboard
+            onOpenQuickAdd={handleOpenQuickAdd}
+            onNavigate={(tab) => setActiveTab(tab)}
+          />
+        )}
+        {activeTab === 'expenses' && <ExpensesPage onOpenQuickAdd={() => handleOpenQuickAdd('expense')} />}
+        {activeTab === 'salary' && <SalaryPage onOpenQuickAdd={() => handleOpenQuickAdd('salary')} />}
+        {activeTab === 'loans' && <LoansPage onOpenQuickAdd={handleOpenQuickAdd} />}
+        {activeTab === 'credit' && <CreditCardsPage onOpenQuickAdd={handleOpenQuickAdd} />}
+        {activeTab === 'accounts' && <AccountsPage onOpenQuickAdd={handleOpenQuickAdd} />}
+        {activeTab === 'reminders' && <RemindersPage onOpenQuickAdd={handleOpenQuickAdd} />}
+        {activeTab === 'calendar' && <CalendarPage />}
+        {activeTab === 'reports' && <ReportsPage />}
+        {activeTab === 'calculators' && <CalculatorsPage />}
+        {activeTab === 'settings' && <SettingsPage />}
+      </main>
+
+      {/* Bottom Navigation Bar with FAB (+) */}
+      <BottomNav
+        activeTab={activeTab}
+        setActiveTab={setActiveTab}
+        onOpenQuickAdd={() => handleOpenQuickAdd('expense')}
+      />
+
+      {/* Quick Add Modal */}
+      <QuickAddModal
+        isOpen={quickAddOpen}
+        onClose={() => setQuickAddOpen(false)}
+        defaultTab={quickAddDefaultTab}
+      />
+
+      {/* Global Search Modal */}
+      <GlobalSearchModal
+        isOpen={searchOpen}
+        onClose={() => setSearchOpen(false)}
+      />
+    </div>
+  );
+};
+
+export default function App() {
+  return (
+    <ThemeProvider>
+      <AuthPinProvider>
+        <FinanceProvider>
+          <AppContent />
+        </FinanceProvider>
+      </AuthPinProvider>
+    </ThemeProvider>
+  );
+}
