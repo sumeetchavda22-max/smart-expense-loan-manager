@@ -549,12 +549,15 @@ const EditIncomeSheet: React.FC<{ income: Income; onClose: () => void; onSaved: 
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className={labelCls}>Account</label>
-              <select value={accountId} onChange={(e) => setAccountId(e.target.value)} className={fieldCls}>
-                <option value="">(None)</option>
+              <select value={accountId} onChange={(e) => setAccountId(e.target.value)} className={fieldCls} required>
+                <option value="" disabled>Select Account</option>
                 {accounts.map((acc) => (
                   <option key={acc.id} value={acc.id}>{acc.name}</option>
                 ))}
               </select>
+              {!accountId && (
+                <p className="text-[10px] text-amber-500 mt-1">Without an account this income won't add to your balance.</p>
+              )}
             </div>
             <div>
               <label className={labelCls}>Date</label>

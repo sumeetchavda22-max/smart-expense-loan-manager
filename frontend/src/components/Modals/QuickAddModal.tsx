@@ -34,6 +34,15 @@ export const QuickAddModal: React.FC<QuickAddModalProps> = ({
     if (isOpen) setActiveType(defaultTab);
   }, [isOpen, defaultTab]);
 
+  // Pre-select a sensible account for Income so it's never left blank — an income record
+  // with no account doesn't add to any balance, which looks like the money vanished.
+  useEffect(() => {
+    if (isOpen && !incAccount && accounts.length > 0) {
+      setIncAccount(accounts.find((a) => a.isDefault)?.id || accounts[0].id);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen, accounts]);
+
   // Expense form state
   const [expTitle, setExpTitle] = useState('');
   const [expAmount, setExpAmount] = useState('');
@@ -453,8 +462,9 @@ export const QuickAddModal: React.FC<QuickAddModalProps> = ({
                     value={incAccount}
                     onChange={(e) => setIncAccount(e.target.value)}
                     className="w-full px-3 py-2.5 min-h-[2.75rem] rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm focus:ring-2 focus:ring-brand-500 outline-none"
+                    required
                   >
-                    <option value="">(Optional) Choose Account</option>
+                    <option value="">Select Account</option>
                     {accounts.map((acc) => (
                       <option key={acc.id} value={acc.id}>
                         {acc.name} ({currency}{acc.balance.toLocaleString()})

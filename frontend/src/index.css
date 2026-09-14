@@ -428,8 +428,12 @@
 .tab-rail {
   position: relative;
   display: flex; align-items: center; justify-content: space-around;
-  height: var(--bottom-nav-h);
-  padding: 0.4rem 0.6rem calc(0.4rem + var(--safe-bottom));
+  /* The safe-area inset is extra height tacked on below the icon row, not stolen from it —
+     otherwise a fixed `height` plus a growing bottom padding squeezes the icons/labels up
+     into a thin strip on notched phones (padding eats into a border-box height budget). */
+  height: calc(var(--bottom-nav-h) + var(--safe-bottom));
+  padding: 0.4rem 0.6rem;
+  padding-bottom: calc(0.4rem + var(--safe-bottom));
   max-width: 40rem; margin: 0 auto;
   border-radius: 1.25rem 1.25rem 0 0;
   background: rgba(255, 255, 255, 0.82);
