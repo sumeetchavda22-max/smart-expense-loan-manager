@@ -4,6 +4,7 @@ import {
   Moon,
   Sun,
   Lock,
+  Fingerprint,
   Bell,
   Database,
   Download,
@@ -24,13 +25,29 @@ import * as api from '../services/api';
 export const SettingsPage: React.FC = () => {
   const { theme, setThemeMode } = useTheme();
   const { currency, updateCurrency, triggerNotification, refreshData } = useFinance();
-  const { pinRequired, setPin } = useAuthPin();
+  const { pinRequired, setPin, biometricAvailable, biometricEnabled, enableBiometric, disableBiometric } = useAuthPin();
 
   const [newPinInput, setNewPinInput] = useState('');
   const [showPinSetup, setShowPinSetup] = useState(false);
+  const [biometricBusy, setBiometricBusy] = useState(false);
+  const [biometricError, setBiometricError] = useState<string | null>(null);
   const [dataBusy, setDataBusy] = useState<'backup' | 'restore' | null>(null);
   const [dataMsg, setDataMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const restoreInputRef = useRef<HTMLInputElement>(null);
+
+  const handleToggleBiometric = async () => {
+    setBiometricError(null);
+    if (biometricEnabled) {
+      if (confirm('Turn off Face ID / Fingerprint unlock? You’ll only be able to unlock with your PIN.')) {
+        disableBiometric();
+      }
+      return;
+    }
+    setBiometricBusy(true);
+    const result = await enableBiometric();
+    setBiometricBusy(false);
+    if (!result.ok) setBiometricError(result.error || 'Could not set up Face ID / Fingerprint.');
+  };
 
   const handleSavePin = (e: React.FormEvent) => {
     e.preventDefault();
@@ -211,6 +228,35 @@ export const SettingsPage: React.FC = () => {
               Save
             </button>
           </form>
+        )}
+
+        {/* Face ID / Fingerprint — only meaningful once a PIN exists to fall back to */}
+        {pinRequired && (
+          <div className="pt-3 border-t border-gray-100 dark:border-slate-800">
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex items-center space-x-3 min-w-0">
+                <Fingerprint className="w-5 h-5 text-brand-600 shrink-0" />
+                <div className="min-w-0">
+                  <p className="text-xs font-bold text-gray-900 dark:text-white">Face ID / Fingerprint Unlock</p>
+                  <p className="text-[11px] text-gray-500">
+                    {biometricAvailable ? 'Unlock with your device’s biometrics instead of typing the PIN' : 'Not available on this device or browser'}
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={handleToggleBiometric}
+                disabled={!biometricAvailable || biometricBusy}
+                className={`shrink-0 px-3 py-1.5 min-h-[2.5rem] rounded-xl text-xs font-semibold disabled:opacity-50 ${
+                  biometricEnabled
+                    ? 'bg-red-50 text-red-600 dark:bg-red-950/40'
+                    : 'bg-brand-600 text-white shadow-sm'
+                }`}
+              >
+                {biometricBusy ? 'Setting up...' : biometricEnabled ? 'Disable' : 'Enable'}
+              </button>
+            </div>
+            {biometricError && <p className="text-[11px] text-red-500 mt-2">{biometricError}</p>}
+          </div>
         )}
       </div>
 

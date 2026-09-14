@@ -1,11 +1,32 @@
-import React, { useState } from 'react';
-import { Lock, Delete, ShieldCheck } from 'lucide-react';
+import React, { useEffect, useRef, useState } from 'react';
+import { Delete, Fingerprint, ShieldCheck } from 'lucide-react';
 import { useAuthPin } from '../../context/AuthPinContext';
 
 export const PINLockModal: React.FC = () => {
-  const { isLocked, unlockApp } = useAuthPin();
+  const { isLocked, unlockApp, biometricEnabled, unlockWithBiometric } = useAuthPin();
   const [pin, setPin] = useState<string>('');
   const [error, setError] = useState<boolean>(false);
+  const [biometricPrompting, setBiometricPrompting] = useState(false);
+  const autoPromptedRef = useRef(false);
+
+  const tryBiometric = async () => {
+    setBiometricPrompting(true);
+    setError(false);
+    const ok = await unlockWithBiometric();
+    setBiometricPrompting(false);
+    if (!ok) setPin('');
+  };
+
+  // Prompt Face ID / Fingerprint automatically as soon as the lock screen appears — same as
+  // a native app — but only once per lock session, so a cancelled prompt doesn't loop.
+  useEffect(() => {
+    if (isLocked && biometricEnabled && !autoPromptedRef.current) {
+      autoPromptedRef.current = true;
+      tryBiometric();
+    }
+    if (!isLocked) autoPromptedRef.current = false;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isLocked, biometricEnabled]);
 
   if (!isLocked) return null;
 
@@ -41,8 +62,21 @@ export const PINLockModal: React.FC = () => {
 
         <div>
           <h2 className="text-xl font-bold text-white tracking-tight">Enter Security PIN</h2>
-          <p className="text-xs text-slate-400 mt-1">Smart Expense & Loan Manager is locked</p>
+          <p className="text-xs text-slate-400 mt-1">
+            {biometricPrompting ? 'Waiting for Face ID / Fingerprint…' : 'Smart Expense & Loan Manager is locked'}
+          </p>
         </div>
+
+        {biometricEnabled && (
+          <button
+            onClick={tryBiometric}
+            disabled={biometricPrompting}
+            className="flex items-center gap-2 px-4 py-2.5 min-h-[2.75rem] rounded-xl bg-slate-800/80 hover:bg-slate-700 text-white text-sm font-semibold shadow-md active:scale-95 transition-all disabled:opacity-60"
+          >
+            <Fingerprint className={`w-5 h-5 ${biometricPrompting ? 'animate-pulse text-brand-400' : 'text-brand-400'}`} />
+            <span>Use Face ID / Fingerprint</span>
+          </button>
+        )}
 
         {/* PIN Dots */}
         <div className="flex items-center space-x-4 my-2">
