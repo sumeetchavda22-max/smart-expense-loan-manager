@@ -9,21 +9,23 @@ import { downloadText, downloadBlob } from './download';
 
 async function loadExportData() {
   const db = await getDb();
-  const [expenses, categories, loans, salaries] = await Promise.all([
+  const [expenses, categories, loans, salaries, incomes] = await Promise.all([
     db.getAll('expenses'),
     db.getAll('categories'),
     db.getAll('loans'),
     db.getAll('salaries'),
+    db.getAll('incomes'),
   ]);
   const catMap = new Map(categories.map((c) => [c.id, c]));
   const expensesWithCategory = expenses
     .map((e) => ({ ...e, categoryName: catMap.get(e.categoryId)?.name || 'General' }))
     .sort((a, b) => b.date.localeCompare(a.date));
-  return { expenses: expensesWithCategory, loans, salaries: salaries.slice(0, 12) };
+  const incomesSorted = [...incomes].sort((a, b) => b.date.localeCompare(a.date));
+  return { expenses: expensesWithCategory, loans, salaries: salaries.slice(0, 12), incomes: incomesSorted };
 }
 
 export async function exportPdf(currency = '₹') {
-  const [{ expenses, loans, salaries }, { default: jsPDF }, { default: autoTable }] = await Promise.all([
+  const [{ expenses, loans, salaries, incomes }, { default: jsPDF }, { default: autoTable }] = await Promise.all([
     loadExportData(),
     import('jspdf'),
     import('jspdf-autotable'),
@@ -50,6 +52,26 @@ export async function exportPdf(currency = '₹') {
     margin: { left: 14, right: 14 },
   });
   y = (doc as any).lastAutoTable.finalY + 10;
+
+  if (incomes.length > 0) {
+    doc.setFontSize(13);
+    doc.text('Other Income', 14, y);
+    y += 4;
+    autoTable(doc, {
+      startY: y,
+      head: [['Date', 'Title', 'Source', 'Amount']],
+      body: incomes.slice(0, 100).map((i) => [
+        new Date(i.date).toLocaleDateString('en-IN'),
+        i.title,
+        i.source,
+        `${currency}${i.amount.toLocaleString('en-IN')}`,
+      ]),
+      styles: { fontSize: 8 },
+      headStyles: { fillColor: [16, 185, 129] },
+      margin: { left: 14, right: 14 },
+    });
+    y = (doc as any).lastAutoTable.finalY + 10;
+  }
 
   doc.setFontSize(13);
   doc.text('Active Loans Summary', 14, y);
@@ -92,7 +114,7 @@ export async function exportPdf(currency = '₹') {
 }
 
 export async function exportExcel() {
-  const [{ expenses, loans }, XLSX] = await Promise.all([loadExportData(), import('xlsx')]);
+  const [{ expenses, loans, incomes }, XLSX] = await Promise.all([loadExportData(), import('xlsx')]);
   const wb = XLSX.utils.book_new();
 
   const expenseSheet = XLSX.utils.json_to_sheet(
@@ -106,6 +128,17 @@ export async function exportExcel() {
     }))
   );
   XLSX.utils.book_append_sheet(wb, expenseSheet, 'Expenses');
+
+  const incomeSheet = XLSX.utils.json_to_sheet(
+    incomes.map((i) => ({
+      ID: i.id,
+      Title: i.title,
+      Source: i.source,
+      Amount: i.amount,
+      Date: new Date(i.date).toLocaleDateString('en-IN'),
+    }))
+  );
+  XLSX.utils.book_append_sheet(wb, incomeSheet, 'Income');
 
   const loanSheet = XLSX.utils.json_to_sheet(
     loans.map((l) => ({

@@ -3,7 +3,6 @@ import {
   LayoutDashboard,
   Receipt,
   Landmark,
-  CreditCard,
   Wallet,
   Bell,
   BarChart3,
@@ -23,7 +22,7 @@ interface BottomNavProps {
   onOpenQuickAdd: () => void;
 }
 
-const MORE_TABS = ['salary', 'accounts', 'credit', 'reminders', 'calendar', 'reports', 'calculators', 'settings'];
+const MORE_TABS = ['salary', 'accounts', 'reminders', 'calendar', 'reports', 'calculators', 'settings'];
 
 export const BottomNav: React.FC<BottomNavProps> = ({
   activeTab,
@@ -42,12 +41,11 @@ export const BottomNav: React.FC<BottomNavProps> = ({
 
   const moreMenuItems = [
     { id: 'salary', label: 'Salary Hub', desc: 'Net salary & deductions', icon: Briefcase, color: 'bg-emerald-500' },
-    { id: 'accounts', label: 'Bank Accounts', desc: 'Cash, Bank & Transfers', icon: Wallet, color: 'bg-purple-500' },
-    { id: 'credit', label: 'Credit Cards', desc: 'Card limits & bill dues', icon: CreditCard, color: 'bg-blue-500' },
+    { id: 'accounts', label: 'Bank Accounts', desc: 'Cash & Bank balances', icon: Wallet, color: 'bg-purple-500' },
     { id: 'reminders', label: 'Due Reminders', desc: 'Bills, EMI & Recharge alerts', icon: Bell, color: 'bg-amber-500' },
     { id: 'calendar', label: 'Calendar View', desc: 'Monthly dues & events grid', icon: Calendar, color: 'bg-indigo-500' },
     { id: 'reports', label: 'Reports & Export', desc: 'Download PDF, Excel & CSV', icon: BarChart3, color: 'bg-teal-500' },
-    { id: 'calculators', label: 'Calculators', desc: 'EMI & Credit safety meter', icon: Calculator, color: 'bg-rose-500' },
+    { id: 'calculators', label: 'Calculators', desc: 'EMI & loan interest calculator', icon: Calculator, color: 'bg-rose-500' },
     { id: 'settings', label: 'Settings', desc: 'Dark mode, PIN & Currency', icon: SettingsIcon, color: 'bg-slate-600' },
   ];
 
@@ -55,7 +53,7 @@ export const BottomNav: React.FC<BottomNavProps> = ({
     { id: 'dashboard', label: 'Home', icon: LayoutDashboard, active: activeTab === 'dashboard' },
     { id: 'expenses', label: 'Expenses', icon: Receipt, active: activeTab === 'expenses' },
     null, // centre "+" slot — a raised action button, not part of the sliding indicator
-    { id: 'loans', label: 'Loans', icon: Landmark, active: activeTab === 'loans' || activeTab === 'credit' },
+    { id: 'loans', label: 'Loans', icon: Landmark, active: activeTab === 'loans' },
     { id: 'more', label: 'More', icon: Grid, active: menuOpen || MORE_TABS.includes(activeTab) },
   ] as const;
 

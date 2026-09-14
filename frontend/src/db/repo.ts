@@ -12,6 +12,27 @@ async function ready() {
   return getDb();
 }
 
+/** Advances a date by one EMI cycle for the given frequency — used to roll a loan's next due date forward on payment. */
+function addInterval(date: Date, frequency: string): string {
+  const d = new Date(date);
+  switch (frequency) {
+    case 'WEEKLY':
+      d.setDate(d.getDate() + 7);
+      break;
+    case 'QUARTERLY':
+      d.setMonth(d.getMonth() + 3);
+      break;
+    case 'YEARLY':
+      d.setFullYear(d.getFullYear() + 1);
+      break;
+    case 'MONTHLY':
+    default:
+      d.setMonth(d.getMonth() + 1);
+      break;
+  }
+  return d.toISOString();
+}
+
 // ==========================================
 // Accounts
 // ==========================================
@@ -68,6 +89,32 @@ export async function createTransfer(data: any) {
 export async function listCategories() {
   const db = await ready();
   return db.getAll('categories');
+}
+
+export async function createCategory(data: any) {
+  const db = await ready();
+  const row = { id: uid(), name: String(data.name).trim(), icon: data.icon || 'Tag', color: data.color || '#3B82F6', isSystem: false };
+  await db.add('categories', row);
+  return row;
+}
+
+export async function updateCategory(id: string, data: any) {
+  const db = await ready();
+  const existing = await db.get('categories', id);
+  if (!existing) throw new Error('Category not found');
+  const updated = {
+    ...existing,
+    name: data.name !== undefined ? String(data.name).trim() : existing.name,
+    color: data.color !== undefined ? data.color : existing.color,
+    icon: data.icon !== undefined ? data.icon : existing.icon,
+  };
+  await db.put('categories', updated);
+  return updated;
+}
+
+export async function deleteCategory(id: string) {
+  const db = await ready();
+  await db.delete('categories', id);
 }
 
 // ==========================================
@@ -137,6 +184,44 @@ export async function createExpense(input: FormData | Record<string, any>) {
 
   const [category, account] = await Promise.all([db.get('categories', row.categoryId), accountId ? db.get('accounts', accountId) : undefined]);
   return { ...row, category, account, receiptUrl: file ? URL.createObjectURL(file) : undefined };
+}
+
+/** Edits an existing expense in place — reverses its old effect on the account balance and applies the new one. */
+export async function updateExpense(id: string, data: Record<string, any>) {
+  const db = await ready();
+  const existing = await db.get('expenses', id);
+  if (!existing) throw new Error('Expense not found');
+
+  const newAmount = data.amount !== undefined ? Number(data.amount) : existing.amount;
+  const newAccountId = data.accountId !== undefined ? data.accountId || null : existing.accountId ?? null;
+
+  if (existing.accountId) await adjustAccountBalance(existing.accountId, existing.amount);
+  if (newAccountId) await adjustAccountBalance(newAccountId, -newAmount);
+
+  const updated = {
+    ...existing,
+    title: data.title ?? existing.title,
+    amount: newAmount,
+    categoryId: data.categoryId ?? existing.categoryId,
+    paymentMethod: data.paymentMethod ?? existing.paymentMethod,
+    accountId: newAccountId,
+    date: data.date ? new Date(data.date).toISOString() : existing.date,
+    notes: data.notes !== undefined ? data.notes || null : existing.notes,
+    tags: data.tags !== undefined ? data.tags || null : existing.tags,
+    updatedAt: nowIso(),
+  };
+  await db.put('expenses', updated);
+
+  const [category, account] = await Promise.all([
+    db.get('categories', updated.categoryId),
+    newAccountId ? db.get('accounts', newAccountId) : undefined,
+  ]);
+  let receiptUrl: string | undefined;
+  if (updated.receiptId) {
+    const receipt = await db.get('receipts', updated.receiptId);
+    if (receipt) receiptUrl = URL.createObjectURL(receipt.blob);
+  }
+  return { ...updated, category, account, receiptUrl };
 }
 
 export async function deleteExpense(id: string) {
@@ -217,6 +302,75 @@ export async function createSalary(data: any) {
 }
 
 // ==========================================
+// Income (general "money received" — salary, freelance, gifts, refunds, etc.)
+// ==========================================
+export async function listIncomes() {
+  const db = await ready();
+  const [incomes, accounts] = await Promise.all([db.getAll('incomes'), db.getAll('accounts')]);
+  const accMap = new Map(accounts.map((a) => [a.id, a]));
+  return incomes
+    .map((i) => ({ ...i, account: i.accountId ? accMap.get(i.accountId) : undefined }))
+    .sort((a, b) => b.date.localeCompare(a.date));
+}
+
+export async function createIncome(data: any) {
+  const db = await ready();
+  const now = nowIso();
+  const amount = Number(data.amount);
+  const accountId = data.accountId || null;
+  const row = {
+    id: uid(),
+    title: data.title,
+    amount,
+    source: data.source || 'OTHER',
+    accountId,
+    date: data.date ? new Date(data.date).toISOString() : now,
+    notes: data.notes || null,
+    createdAt: now,
+    updatedAt: now,
+  };
+  await db.add('incomes', row);
+  if (accountId) await adjustAccountBalance(accountId, amount);
+
+  const account = accountId ? await db.get('accounts', accountId) : undefined;
+  return { ...row, account };
+}
+
+export async function updateIncome(id: string, data: Record<string, any>) {
+  const db = await ready();
+  const existing = await db.get('incomes', id);
+  if (!existing) throw new Error('Income not found');
+
+  const newAmount = data.amount !== undefined ? Number(data.amount) : existing.amount;
+  const newAccountId = data.accountId !== undefined ? data.accountId || null : existing.accountId ?? null;
+
+  if (existing.accountId) await adjustAccountBalance(existing.accountId, -existing.amount);
+  if (newAccountId) await adjustAccountBalance(newAccountId, newAmount);
+
+  const updated = {
+    ...existing,
+    title: data.title ?? existing.title,
+    amount: newAmount,
+    source: data.source ?? existing.source,
+    accountId: newAccountId,
+    date: data.date ? new Date(data.date).toISOString() : existing.date,
+    notes: data.notes !== undefined ? data.notes || null : existing.notes,
+    updatedAt: nowIso(),
+  };
+  await db.put('incomes', updated);
+
+  const account = newAccountId ? await db.get('accounts', newAccountId) : undefined;
+  return { ...updated, account };
+}
+
+export async function deleteIncome(id: string) {
+  const db = await ready();
+  const inc = await db.get('incomes', id);
+  if (inc?.accountId) await adjustAccountBalance(inc.accountId, -inc.amount);
+  await db.delete('incomes', id);
+}
+
+// ==========================================
 // Loans
 // ==========================================
 export async function listLoans() {
@@ -229,36 +383,31 @@ export async function listLoans() {
 
 export async function createLoan(data: any) {
   const db = await ready();
-  const { name, type, bankName, amount, interestRate, loanPeriodMonths, emiAmount, startDate, nextDueDate, notes, documents } = data;
+  const { name, type, bankName, amount, emiFrequency, totalEmis, emiAmount, startDate, nextDueDate, notes, documents } = data;
 
   const numAmount = Number(amount);
-  const numPeriod = Number(loanPeriodMonths);
-  const numInterest = Number(interestRate);
+  const numTotalEmis = Math.max(1, Math.round(Number(totalEmis)) || 1);
+  const frequency = emiFrequency || 'MONTHLY';
 
   let calcEmi = Number(emiAmount);
-  if (!calcEmi || calcEmi <= 0) {
-    const monthlyRate = numInterest / 12 / 100;
-    calcEmi =
-      monthlyRate > 0
-        ? (numAmount * monthlyRate * Math.pow(1 + monthlyRate, numPeriod)) / (Math.pow(1 + monthlyRate, numPeriod) - 1)
-        : numAmount / numPeriod;
-  }
+  if (!calcEmi || calcEmi <= 0) calcEmi = numAmount / numTotalEmis;
 
   const now = nowIso();
+  const start = startDate ? new Date(startDate).toISOString() : now;
   const row = {
     id: uid(),
     name,
     type,
     bankName: bankName ?? null,
     amount: numAmount,
-    interestRate: numInterest,
-    loanPeriodMonths: numPeriod,
     emiAmount: round2(calcEmi),
+    emiFrequency: frequency,
+    totalEmis: numTotalEmis,
     paidEmis: 0,
-    remainingEmis: numPeriod,
+    remainingEmis: numTotalEmis,
     outstandingBalance: numAmount,
-    startDate: startDate ? new Date(startDate).toISOString() : now,
-    nextDueDate: nextDueDate ? new Date(nextDueDate).toISOString() : new Date(Date.now() + 30 * 86400000).toISOString(),
+    startDate: start,
+    nextDueDate: nextDueDate ? new Date(nextDueDate).toISOString() : addInterval(new Date(start), frequency),
     status: 'ACTIVE',
     notes: notes ?? null,
     documents: documents ?? null,
@@ -269,20 +418,18 @@ export async function createLoan(data: any) {
   return row;
 }
 
+/** Marks the next EMI paid: +1 completed, -1 remaining, rolls the due date forward by one EMI cycle, and logs payment history. */
 export async function payLoanEMI(loanId: string, data: any) {
   const db = await ready();
   const { accountId, notes } = data;
   const loan = await db.get('loans', loanId);
   if (!loan) throw new Error('Loan not found');
+  if (loan.remainingEmis <= 0) throw new Error('This loan is already fully paid off');
 
   const emiNumber = loan.paidEmis + 1;
-  const monthlyRate = loan.interestRate / 12 / 100;
-  const interestPaid = round2(loan.outstandingBalance * monthlyRate);
-  const principalPaid = Math.max(0, round2(loan.emiAmount - interestPaid));
-
   const newPaidEmis = loan.paidEmis + 1;
-  const newRemainingEmis = Math.max(0, loan.loanPeriodMonths - newPaidEmis);
-  const newOutstanding = Math.max(0, round2(loan.outstandingBalance - principalPaid));
+  const newRemainingEmis = Math.max(0, loan.totalEmis - newPaidEmis);
+  const newOutstanding = Math.max(0, round2(loan.outstandingBalance - loan.emiAmount));
 
   const payment = {
     id: uid(),
@@ -291,19 +438,17 @@ export async function payLoanEMI(loanId: string, data: any) {
     paymentDate: nowIso(),
     accountId: accountId ?? null,
     emiNumber,
-    principalPaid,
-    interestPaid,
     notes: notes ?? null,
     createdAt: nowIso(),
   };
   await db.add('loanPayments', payment);
 
-  const isCompleted = newRemainingEmis === 0 || newOutstanding <= 0;
+  const isCompleted = newRemainingEmis === 0;
   loan.paidEmis = newPaidEmis;
   loan.remainingEmis = newRemainingEmis;
   loan.outstandingBalance = newOutstanding;
   loan.status = isCompleted ? 'COMPLETED' : 'ACTIVE';
-  loan.nextDueDate = new Date(Date.now() + 30 * 86400000).toISOString();
+  if (!isCompleted) loan.nextDueDate = addInterval(new Date(loan.nextDueDate), loan.emiFrequency);
   loan.updatedAt = nowIso();
   await db.put('loans', loan);
 

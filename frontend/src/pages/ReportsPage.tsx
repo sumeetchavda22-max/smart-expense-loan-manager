@@ -88,8 +88,8 @@ export const ReportsPage: React.FC = () => {
 
         <div className="space-y-2 text-xs">
           <div className="flex justify-between py-2 border-b border-gray-100 dark:border-slate-800">
-            <span className="text-gray-600 dark:text-slate-400 font-medium">Total In-Hand Income</span>
-            <span className="font-bold text-emerald-500">+{currency}{(dashboard?.totalSalary || 0).toLocaleString()}</span>
+            <span className="text-gray-600 dark:text-slate-400 font-medium">Total Income</span>
+            <span className="font-bold text-emerald-500">+{currency}{(dashboard?.totalIncome || 0).toLocaleString()}</span>
           </div>
 
           <div className="flex justify-between py-2 border-b border-gray-100 dark:border-slate-800">
@@ -100,11 +100,6 @@ export const ReportsPage: React.FC = () => {
           <div className="flex justify-between py-2 border-b border-gray-100 dark:border-slate-800">
             <span className="text-gray-600 dark:text-slate-400 font-medium">Monthly Active Loan EMIs</span>
             <span className="font-bold text-amber-500">{currency}{(dashboard?.totalMonthlyEMI || 0).toLocaleString()}</span>
-          </div>
-
-          <div className="flex justify-between py-2 border-b border-gray-100 dark:border-slate-800">
-            <span className="text-gray-600 dark:text-slate-400 font-medium">Credit Card Outstanding</span>
-            <span className="font-bold text-blue-500">{currency}{(dashboard?.totalCreditCardDue || 0).toLocaleString()}</span>
           </div>
 
           <div className="flex justify-between py-2 font-bold text-sm text-gray-900 dark:text-white">

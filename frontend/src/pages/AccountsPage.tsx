@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { CreditCard, Plus, ArrowRightLeft, Wallet, Landmark, Smartphone, DollarSign } from 'lucide-react';
+import { CreditCard, Plus, Wallet, Landmark, Smartphone } from 'lucide-react';
 import { useFinance } from '../context/FinanceContext';
 import * as api from '../services/api';
 
@@ -58,22 +58,13 @@ export const AccountsPage: React.FC<AccountsPageProps> = ({ onOpenQuickAdd }) =>
             Total Combined Balance: <span className="font-bold text-brand-600">{currency}{totalBalance.toLocaleString()}</span>
           </p>
         </div>
-        <div className="flex items-center space-x-2">
-          <button
-            onClick={() => onOpenQuickAdd('transfer')}
-            className="flex items-center space-x-1 px-3 py-2 rounded-xl bg-gray-100 dark:bg-slate-800 text-gray-700 dark:text-slate-200 font-semibold text-xs"
-          >
-            <ArrowRightLeft className="w-3.5 h-3.5" />
-            <span>Transfer</span>
-          </button>
-          <button
-            onClick={() => setShowAddAcc(true)}
-            className="flex items-center space-x-1.5 px-3 py-2 rounded-xl bg-brand-600 hover:bg-brand-700 text-white font-semibold text-xs shadow-md shadow-brand-500/20"
-          >
-            <Plus className="w-4 h-4" />
-            <span>Add Account</span>
-          </button>
-        </div>
+        <button
+          onClick={() => setShowAddAcc(true)}
+          className="flex items-center space-x-1.5 px-3 py-2 rounded-xl bg-brand-600 hover:bg-brand-700 text-white font-semibold text-xs shadow-md shadow-brand-500/20"
+        >
+          <Plus className="w-4 h-4" />
+          <span>Add Account</span>
+        </button>
       </div>
 
       {/* Account Grid */}

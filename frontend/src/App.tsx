@@ -14,7 +14,6 @@ import { Dashboard } from './pages/Dashboard';
 import { ExpensesPage } from './pages/ExpensesPage';
 import { SalaryPage } from './pages/SalaryPage';
 import { LoansPage } from './pages/LoansPage';
-import { CreditCardsPage } from './pages/CreditCardsPage';
 import { AccountsPage } from './pages/AccountsPage';
 import { RemindersPage } from './pages/RemindersPage';
 import { CalendarPage } from './pages/CalendarPage';
@@ -82,10 +81,9 @@ export const AppContent: React.FC = () => {
             onNavigate={(tab) => setActiveTab(tab)}
           />
         )}
-        {activeTab === 'expenses' && <ExpensesPage onOpenQuickAdd={() => handleOpenQuickAdd('expense')} />}
+        {activeTab === 'expenses' && <ExpensesPage onOpenQuickAdd={handleOpenQuickAdd} />}
         {activeTab === 'salary' && <SalaryPage onOpenQuickAdd={() => handleOpenQuickAdd('salary')} />}
         {activeTab === 'loans' && <LoansPage onOpenQuickAdd={handleOpenQuickAdd} />}
-        {activeTab === 'credit' && <CreditCardsPage onOpenQuickAdd={handleOpenQuickAdd} />}
         {activeTab === 'accounts' && <AccountsPage onOpenQuickAdd={handleOpenQuickAdd} />}
         {activeTab === 'reminders' && <RemindersPage onOpenQuickAdd={handleOpenQuickAdd} />}
         {activeTab === 'calendar' && <CalendarPage />}

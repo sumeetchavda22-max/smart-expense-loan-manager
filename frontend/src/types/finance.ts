@@ -33,6 +33,19 @@ export interface Expense {
   repeatFrequency?: 'MONTHLY' | 'WEEKLY' | 'YEARLY';
 }
 
+export type IncomeSource = 'SALARY' | 'FREELANCE' | 'BUSINESS' | 'GIFT' | 'INTEREST' | 'REFUND' | 'RENTAL' | 'OTHER';
+
+export interface Income {
+  id: string;
+  title: string;
+  amount: number;
+  source: IncomeSource;
+  accountId?: string;
+  account?: Account;
+  date: string;
+  notes?: string;
+}
+
 export interface Salary {
   id: string;
   companyName: string;
@@ -53,15 +66,17 @@ export interface Salary {
   paymentDate: string;
 }
 
+export type EmiFrequency = 'WEEKLY' | 'MONTHLY' | 'QUARTERLY' | 'YEARLY';
+
 export interface Loan {
   id: string;
   name: string;
   type: 'PERSONAL' | 'HOME' | 'CAR' | 'BIKE' | 'GOLD' | 'BUSINESS' | 'EDUCATION' | 'CREDIT' | 'FRIEND';
   bankName?: string;
   amount: number;
-  interestRate: number;
-  loanPeriodMonths: number;
   emiAmount: number;
+  emiFrequency: EmiFrequency;
+  totalEmis: number;
   paidEmis: number;
   remainingEmis: number;
   outstandingBalance: number;
@@ -80,8 +95,6 @@ export interface LoanPayment {
   paymentDate: string;
   accountId?: string;
   emiNumber: number;
-  principalPaid: number;
-  interestPaid: number;
   notes?: string;
 }
 
@@ -136,6 +149,7 @@ export interface Reminder {
 export interface DashboardData {
   currentBalance: number;
   totalSalary: number;
+  totalIncome: number;
   totalExpenses: number;
   totalMonthExpenses: number;
   totalLoanBalance: number;

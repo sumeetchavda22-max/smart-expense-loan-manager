@@ -38,8 +38,7 @@
   :root {
     --safe-top: env(safe-area-inset-top, 0px);
     --safe-bottom: env(safe-area-inset-bottom, 0px);
-    --bottom-nav-h: 3.5rem; /* floating pill height */
-    --bottom-nav-offset: 1.1rem; /* gap between the floating pill and the screen edge */
+    --bottom-nav-h: 3.5rem; /* native bottom tab bar height, excluding the home-indicator inset */
   }
 
   html {
@@ -108,8 +107,8 @@
   /* ---------- Safe-area & mobile layout helpers ---------- */
   .pt-safe { padding-top: var(--safe-top); }
   .pb-safe { padding-bottom: var(--safe-bottom); }
-  /* Page bottom padding: clears the floating bottom nav + home indicator */
-  .pb-nav { padding-bottom: calc(var(--bottom-nav-h) + var(--bottom-nav-offset) + var(--safe-bottom) + 1rem); }
+  /* Page bottom padding: clears the fixed bottom nav + home indicator, so content never sits under it */
+  .pb-nav { padding-bottom: calc(var(--bottom-nav-h) + var(--safe-bottom) + 1.25rem); }
   .min-h-dvh { min-height: 100vh; min-height: 100dvh; }
 
   /* Hide scrollbars on horizontal chip rows */
@@ -419,38 +418,41 @@
 .ptr-spin { animation: ptr-rot 0.8s linear infinite; }
 @keyframes ptr-rot { to { transform: rotate(360deg); } }
 
-/* ---------- Floating liquid-glass pill tab bar with a sliding active indicator ---------- */
+/* ---------- Fixed, native-style liquid-glass bottom tab bar with a sliding active indicator ----------
+   Anchored flush to the true bottom edge (no floating margins/gaps), full viewport width, with the
+   home-indicator safe area baked into the bar's own background so nothing shows through beneath it. */
 .tab-bar-float {
-  position: fixed; left: 1rem; right: 1rem; z-index: 40;
-  bottom: calc(var(--bottom-nav-offset) + var(--safe-bottom));
-  max-width: 24.5rem; margin: 0 auto;
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 40;
   transform: translateZ(0);                     /* keeps blur crisp while page scrolls beneath */
 }
 .tab-rail {
   position: relative;
   display: flex; align-items: center; justify-content: space-around;
   height: var(--bottom-nav-h);
-  padding: 0.4rem 0.6rem;
-  border-radius: 9999px;
-  background: rgba(255, 255, 255, 0.75);
+  padding: 0.4rem 0.6rem calc(0.4rem + var(--safe-bottom));
+  max-width: 40rem; margin: 0 auto;
+  border-radius: 1.25rem 1.25rem 0 0;
+  background: rgba(255, 255, 255, 0.82);
   backdrop-filter: blur(28px) saturate(190%);
   -webkit-backdrop-filter: blur(28px) saturate(190%);
   border: 1px solid rgba(15, 23, 42, 0.08);
-  box-shadow: 0 12px 36px -8px rgba(15, 23, 42, 0.28), inset 0 1px 1px rgba(255, 255, 255, 0.6);
+  border-bottom: none;
+  box-shadow: 0 -8px 28px -8px rgba(15, 23, 42, 0.18), inset 0 1px 1px rgba(255, 255, 255, 0.6);
 }
 .dark .tab-rail {
-  background: rgba(17, 24, 39, 0.65);
+  background: rgba(17, 24, 39, 0.82);
   border-color: rgba(255, 255, 255, 0.12);
-  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.55), inset 0 1px 1px rgba(255, 255, 255, 0.1);
+  border-bottom: none;
+  box-shadow: 0 -8px 28px -8px rgba(0, 0, 0, 0.5), inset 0 1px 1px rgba(255, 255, 255, 0.1);
 }
 .amoled .tab-rail {
-  background: rgba(0, 0, 0, 0.78) !important;
+  background: rgba(0, 0, 0, 0.9) !important;
   border-color: rgba(255, 255, 255, 0.16);
 }
 
 /* The liquid slider: one shared pill that glides + gently stretches to the newly active tab */
 .tab-slider {
-  position: absolute; top: 0.4rem; left: 0; bottom: 0.4rem;
+  position: absolute; top: 0.4rem; left: 0; bottom: calc(0.4rem + var(--safe-bottom));
   border-radius: 9999px;
   background: rgba(17, 134, 172, 0.14);
   border: 1px solid rgba(17, 134, 172, 0.35);

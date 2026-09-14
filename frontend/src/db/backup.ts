@@ -21,12 +21,13 @@ const base64ToBlob = (base64: string, type: string): Blob => {
 /** Every store, as plain JSON — this is the file that gets saved to the iPhone's Files app. */
 export async function exportBackup(): Promise<void> {
   const db = await getDb();
-  const [settings, accounts, salaries, expenses, loans, loanPayments, creditCards, creditPayments, transfers, reminders, categories, budgets, receipts] =
+  const [settings, accounts, salaries, expenses, incomes, loans, loanPayments, creditCards, creditPayments, transfers, reminders, categories, budgets, receipts] =
     await Promise.all([
       db.get('settings', 'default-settings'),
       db.getAll('accounts'),
       db.getAll('salaries'),
       db.getAll('expenses'),
+      db.getAll('incomes'),
       db.getAll('loans'),
       db.getAll('loanPayments'),
       db.getAll('creditCards'),
@@ -51,6 +52,7 @@ export async function exportBackup(): Promise<void> {
       accounts,
       salaries,
       expenses,
+      incomes,
       loans,
       loanPayments,
       creditCards,
@@ -79,6 +81,7 @@ export async function importBackup(file: File): Promise<{ restored: number }> {
     'accounts',
     'salaries',
     'expenses',
+    'incomes',
     'loans',
     'loanPayments',
     'creditCards',

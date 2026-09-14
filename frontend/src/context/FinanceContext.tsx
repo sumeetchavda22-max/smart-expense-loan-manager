@@ -2,6 +2,7 @@ import React, { createContext, useContext, useEffect, useState } from 'react';
 import {
   DashboardData,
   Expense,
+  Income,
   Salary,
   Loan,
   CreditCard,
@@ -16,6 +17,7 @@ import * as api from '../services/api';
 interface FinanceContextType {
   dashboard: DashboardData | null;
   expenses: Expense[];
+  incomes: Income[];
   salaries: Salary[];
   loans: Loan[];
   creditCards: CreditCard[];
@@ -34,6 +36,7 @@ interface FinanceContextType {
 const FinanceContext = createContext<FinanceContextType>({
   dashboard: null,
   expenses: [],
+  incomes: [],
   salaries: [],
   loans: [],
   creditCards: [],
@@ -52,6 +55,7 @@ const FinanceContext = createContext<FinanceContextType>({
 export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [dashboard, setDashboard] = useState<DashboardData | null>(null);
   const [expenses, setExpenses] = useState<Expense[]>([]);
+  const [incomes, setIncomes] = useState<Income[]>([]);
   const [salaries, setSalaries] = useState<Salary[]>([]);
   const [loans, setLoans] = useState<Loan[]>([]);
   const [creditCards, setCreditCards] = useState<CreditCard[]>([]);
@@ -89,9 +93,10 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
       setLoading(true);
       setError(null);
 
-      const [dash, exp, sal, loa, cr, acc, rem, cat, set] = await Promise.all([
+      const [dash, exp, inc, sal, loa, cr, acc, rem, cat, set] = await Promise.all([
         api.fetchDashboard().catch(() => null),
         api.fetchExpenses().catch(() => []),
+        api.fetchIncomes().catch(() => []),
         api.fetchSalaries().catch(() => []),
         api.fetchLoans().catch(() => []),
         api.fetchCreditCards().catch(() => []),
@@ -103,6 +108,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
       if (dash) setDashboard(dash);
       setExpenses(exp);
+      setIncomes(inc);
       setSalaries(sal);
       setLoans(loa);
       setCreditCards(cr);
@@ -137,6 +143,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
       value={{
         dashboard,
         expenses,
+        incomes,
         salaries,
         loans,
         creditCards,

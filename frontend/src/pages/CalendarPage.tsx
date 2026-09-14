@@ -6,7 +6,7 @@ import { Calendar as CalendarIcon, X } from 'lucide-react';
 import { useFinance } from '../context/FinanceContext';
 
 export const CalendarPage: React.FC = () => {
-  const { expenses, reminders, loans, creditCards, salaries, currency } = useFinance();
+  const { expenses, reminders, loans, salaries, currency } = useFinance();
   const [selectedDateEvents, setSelectedDateEvents] = useState<any[] | null>(null);
   const [selectedDateStr, setSelectedDateStr] = useState<string>('');
 

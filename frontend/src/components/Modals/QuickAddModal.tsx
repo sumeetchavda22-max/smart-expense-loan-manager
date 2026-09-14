@@ -1,13 +1,11 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   X,
   Receipt,
   Briefcase,
   Landmark,
-  CreditCard,
   Bell,
-  ArrowRightLeft,
-  Upload,
+  TrendingUp,
 } from 'lucide-react';
 import { useFinance } from '../../context/FinanceContext';
 import * as api from '../../services/api';
@@ -23,10 +21,18 @@ export const QuickAddModal: React.FC<QuickAddModalProps> = ({
   onClose,
   defaultTab = 'expense',
 }) => {
-  const { categories, accounts, loans, creditCards, refreshData, currency } = useFinance();
+  const { categories, accounts, refreshData, currency } = useFinance();
   const [activeType, setActiveType] = useState<string>(defaultTab);
   const [submitting, setSubmitting] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
+
+  // The modal never unmounts (App.tsx always renders it, gated by `isOpen`), so the
+  // `useState(defaultTab)` initializer above only ever runs once. Re-sync explicitly
+  // whenever it's (re)opened, or every quick-add button after the first would keep
+  // reopening on whichever tab was last selected instead of the one that was tapped.
+  useEffect(() => {
+    if (isOpen) setActiveType(defaultTab);
+  }, [isOpen, defaultTab]);
 
   // Expense form state
   const [expTitle, setExpTitle] = useState('');
@@ -39,6 +45,14 @@ export const QuickAddModal: React.FC<QuickAddModalProps> = ({
   const [expReceipt, setExpReceipt] = useState<File | null>(null);
   const [expRecurring, setExpRecurring] = useState(false);
   const [expFrequency, setExpFrequency] = useState<'MONTHLY' | 'WEEKLY' | 'YEARLY'>('MONTHLY');
+
+  // Income form state (general "money received" — salary, freelance, gifts, refunds, etc.)
+  const [incTitle, setIncTitle] = useState('');
+  const [incAmount, setIncAmount] = useState('');
+  const [incSource, setIncSource] = useState('SALARY');
+  const [incAccount, setIncAccount] = useState('');
+  const [incDate, setIncDate] = useState(new Date().toISOString().substring(0, 10));
+  const [incNotes, setIncNotes] = useState('');
 
   // Salary form state
   const [salCompany, setSalCompany] = useState('');
@@ -56,20 +70,11 @@ export const QuickAddModal: React.FC<QuickAddModalProps> = ({
   const [loanType, setLoanType] = useState('PERSONAL');
   const [loanBank, setLoanBank] = useState('');
   const [loanAmount, setLoanAmount] = useState('');
-  const [loanInterest, setLoanInterest] = useState('10.5');
-  const [loanPeriod, setLoanPeriod] = useState('12');
-
-  // Credit card form state
-  const [cardName, setCardName] = useState('');
-  const [cardBank, setCardBank] = useState('');
-  const [cardLimit, setCardLimit] = useState('');
-  const [cardUsedAmount, setCardUsedAmount] = useState('0');
-  const [cardStatementDate, setCardStatementDate] = useState('1');
-  const [cardDueDate, setCardDueDate] = useState('15');
-
-  // Loan EMI Payment form state
-  const [payLoanId, setPayLoanId] = useState('');
-  const [payLoanAccount, setPayLoanAccount] = useState('');
+  const [loanFrequency, setLoanFrequency] = useState('MONTHLY');
+  const [loanTotalEmis, setLoanTotalEmis] = useState('12');
+  const [loanEmiAmount, setLoanEmiAmount] = useState('');
+  const [loanStartDate, setLoanStartDate] = useState(new Date().toISOString().substring(0, 10));
+  const [loanFirstEmiDate, setLoanFirstEmiDate] = useState('');
 
   // Reminder form state
   const [remTitle, setRemTitle] = useState('');
@@ -79,11 +84,6 @@ export const QuickAddModal: React.FC<QuickAddModalProps> = ({
   const [remDueTime, setRemDueTime] = useState('09:00');
   const [remRepeat, setRemRepeat] = useState('MONTHLY');
   const [remPriority, setRemPriority] = useState('MEDIUM');
-
-  // Transfer form state
-  const [trFromAcc, setTrFromAcc] = useState('');
-  const [trToAcc, setTrToAcc] = useState('');
-  const [trAmount, setTrAmount] = useState('');
 
   if (!isOpen) return null;
 
@@ -106,6 +106,29 @@ export const QuickAddModal: React.FC<QuickAddModalProps> = ({
       if (expReceipt) fd.append('receipt', expReceipt);
 
       await api.createExpense(fd);
+      await refreshData();
+      onClose();
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleSubmitIncome = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!incTitle || !incAmount) return setError('Title and amount required');
+    try {
+      setSubmitting(true);
+      setError(null);
+      await api.createIncome({
+        title: incTitle,
+        amount: Number(incAmount),
+        source: incSource,
+        accountId: incAccount || null,
+        date: incDate,
+        notes: incNotes,
+      });
       await refreshData();
       onClose();
     } catch (err: any) {
@@ -143,7 +166,7 @@ export const QuickAddModal: React.FC<QuickAddModalProps> = ({
 
   const handleSubmitLoan = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!loanName || !loanAmount) return setError('Loan Name and Amount required');
+    if (!loanName || !loanAmount || !loanTotalEmis) return setError('Loan Name, Amount and Tenure required');
     try {
       setSubmitting(true);
       setError(null);
@@ -152,48 +175,12 @@ export const QuickAddModal: React.FC<QuickAddModalProps> = ({
         type: loanType,
         bankName: loanBank,
         amount: Number(loanAmount),
-        interestRate: Number(loanInterest),
-        loanPeriodMonths: Number(loanPeriod),
+        emiFrequency: loanFrequency,
+        totalEmis: Number(loanTotalEmis),
+        emiAmount: loanEmiAmount ? Number(loanEmiAmount) : undefined,
+        startDate: loanStartDate,
+        nextDueDate: loanFirstEmiDate || undefined,
       });
-      await refreshData();
-      onClose();
-    } catch (err: any) {
-      setError(err.message);
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  const handleSubmitCreditCard = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!cardName || !cardLimit) return setError('Card Name and Limit required');
-    try {
-      setSubmitting(true);
-      setError(null);
-      await api.createCreditCard({
-        cardName,
-        bankName: cardBank,
-        cardLimit: Number(cardLimit),
-        usedAmount: Number(cardUsedAmount) || 0,
-        statementDate: Number(cardStatementDate),
-        dueDate: Number(cardDueDate),
-      });
-      await refreshData();
-      onClose();
-    } catch (err: any) {
-      setError(err.message);
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  const handleSubmitPayEMI = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!payLoanId) return setError('Select loan');
-    try {
-      setSubmitting(true);
-      setError(null);
-      await api.payLoanEMI(payLoanId, { accountId: payLoanAccount || null });
       await refreshData();
       onClose();
     } catch (err: any) {
@@ -227,26 +214,6 @@ export const QuickAddModal: React.FC<QuickAddModalProps> = ({
     }
   };
 
-  const handleSubmitTransfer = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!trFromAcc || !trToAcc || !trAmount) return setError('Source, Destination & Amount required');
-    try {
-      setSubmitting(true);
-      setError(null);
-      await api.createTransfer({
-        fromAccountId: trFromAcc,
-        toAccountId: trToAcc,
-        amount: Number(trAmount),
-      });
-      await refreshData();
-      onClose();
-    } catch (err: any) {
-      setError(err.message);
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
   return (
     <div className="sheet-overlay" onClick={onClose} role="dialog" aria-modal="true" aria-label="Quick create">
       <div className="sheet-panel bg-white dark:bg-slate-900 shadow-2xl" onClick={(e) => e.stopPropagation()}>
@@ -267,12 +234,10 @@ export const QuickAddModal: React.FC<QuickAddModalProps> = ({
         <div className="flex items-center space-x-1 p-2 bg-gray-50 dark:bg-slate-800/50 border-b border-gray-100 dark:border-slate-800 overflow-x-auto no-scrollbar snap-row">
           {[
             { id: 'expense', label: 'Expense', icon: Receipt },
+            { id: 'income', label: 'Income', icon: TrendingUp },
             { id: 'salary', label: 'Salary', icon: Briefcase },
             { id: 'loan', label: 'Loan', icon: Landmark },
-            { id: 'credit', label: 'Credit Card', icon: CreditCard },
-            { id: 'emi', label: 'Pay EMI', icon: Landmark },
             { id: 'reminder', label: 'Reminder', icon: Bell },
-            { id: 'transfer', label: 'Transfer', icon: ArrowRightLeft },
           ].map((item) => {
             const Icon = item.icon;
             const isActive = activeType === item.id;
@@ -426,7 +391,114 @@ export const QuickAddModal: React.FC<QuickAddModalProps> = ({
             </form>
           )}
 
-          {/* 2. SALARY FORM */}
+          {/* 2. INCOME FORM (general money received — salary, freelance, gifts, refunds, etc.) */}
+          {activeType === 'income' && (
+            <form onSubmit={handleSubmitIncome} className="space-y-3">
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">
+                  Title
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g. Monthly Salary, Freelance Payment"
+                  value={incTitle}
+                  onChange={(e) => setIncTitle(e.target.value)}
+                  className="w-full px-3 py-2.5 min-h-[2.75rem] rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm focus:ring-2 focus:ring-brand-500 outline-none"
+                  required
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">
+                    Amount ({currency})
+                  </label>
+                  <input
+                    type="number"
+                    inputMode="decimal"
+                    placeholder="0.00"
+                    value={incAmount}
+                    onChange={(e) => setIncAmount(e.target.value)}
+                    className="w-full px-3 py-2.5 min-h-[2.75rem] rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm focus:ring-2 focus:ring-brand-500 outline-none"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">
+                    Source
+                  </label>
+                  <select
+                    value={incSource}
+                    onChange={(e) => setIncSource(e.target.value)}
+                    className="w-full px-3 py-2.5 min-h-[2.75rem] rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm focus:ring-2 focus:ring-brand-500 outline-none"
+                  >
+                    <option value="SALARY">Salary</option>
+                    <option value="FREELANCE">Freelance</option>
+                    <option value="BUSINESS">Business</option>
+                    <option value="GIFT">Gift</option>
+                    <option value="INTEREST">Interest</option>
+                    <option value="REFUND">Refund</option>
+                    <option value="RENTAL">Rental</option>
+                    <option value="OTHER">Other</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">
+                    Deposit To Account
+                  </label>
+                  <select
+                    value={incAccount}
+                    onChange={(e) => setIncAccount(e.target.value)}
+                    className="w-full px-3 py-2.5 min-h-[2.75rem] rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm focus:ring-2 focus:ring-brand-500 outline-none"
+                  >
+                    <option value="">(Optional) Choose Account</option>
+                    {accounts.map((acc) => (
+                      <option key={acc.id} value={acc.id}>
+                        {acc.name} ({currency}{acc.balance.toLocaleString()})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">
+                    Date
+                  </label>
+                  <input
+                    type="date"
+                    value={incDate}
+                    onChange={(e) => setIncDate(e.target.value)}
+                    className="w-full px-3 py-2.5 min-h-[2.75rem] rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm focus:ring-2 focus:ring-brand-500 outline-none"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">
+                  Notes (Optional)
+                </label>
+                <input
+                  type="text"
+                  placeholder="Add a note"
+                  value={incNotes}
+                  onChange={(e) => setIncNotes(e.target.value)}
+                  className="w-full px-3 py-2.5 min-h-[2.75rem] rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm outline-none"
+                />
+              </div>
+
+              <button
+                type="submit"
+                disabled={submitting}
+                className="w-full py-3 min-h-[3rem] rounded-xl bg-brand-600 hover:bg-brand-700 text-white font-semibold text-sm shadow-md shadow-brand-500/30 transition-all mt-4"
+              >
+                {submitting ? 'Saving...' : 'Add Income'}
+              </button>
+            </form>
+          )}
+
+          {/* 3. SALARY FORM */}
           {activeType === 'salary' && (
             <form onSubmit={handleSubmitSalary} className="space-y-3">
               <div>
@@ -574,10 +646,10 @@ export const QuickAddModal: React.FC<QuickAddModalProps> = ({
                 </div>
               </div>
 
-              <div className="grid grid-cols-3 gap-2">
+              <div className="grid grid-cols-2 gap-2">
                 <div>
                   <label className="block text-[11px] font-semibold text-gray-600 dark:text-slate-400 mb-1">
-                    Amount ({currency})
+                    Total Loan Amount ({currency})
                   </label>
                   <input
                     type="number" inputMode="decimal"
@@ -590,24 +662,68 @@ export const QuickAddModal: React.FC<QuickAddModalProps> = ({
                 </div>
                 <div>
                   <label className="block text-[11px] font-semibold text-gray-600 dark:text-slate-400 mb-1">
-                    Interest % (p.a.)
+                    EMI Frequency
+                  </label>
+                  <select
+                    value={loanFrequency}
+                    onChange={(e) => setLoanFrequency(e.target.value)}
+                    className="w-full px-2.5 py-1.5 rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs outline-none"
+                  >
+                    <option value="WEEKLY">Weekly</option>
+                    <option value="MONTHLY">Monthly</option>
+                    <option value="QUARTERLY">Quarterly</option>
+                    <option value="YEARLY">Yearly</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="block text-[11px] font-semibold text-gray-600 dark:text-slate-400 mb-1">
+                    Tenure (Total EMIs)
                   </label>
                   <input
                     type="number" inputMode="decimal"
-                    step="0.1"
-                    value={loanInterest}
-                    onChange={(e) => setLoanInterest(e.target.value)}
+                    value={loanTotalEmis}
+                    onChange={(e) => setLoanTotalEmis(e.target.value)}
+                    className="w-full px-2.5 py-1.5 rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs outline-none"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-[11px] font-semibold text-gray-600 dark:text-slate-400 mb-1">
+                    EMI Amount ({currency})
+                  </label>
+                  <input
+                    type="number" inputMode="decimal"
+                    placeholder="Auto-calculated"
+                    value={loanEmiAmount}
+                    onChange={(e) => setLoanEmiAmount(e.target.value)}
+                    className="w-full px-2.5 py-1.5 rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs outline-none"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="block text-[11px] font-semibold text-gray-600 dark:text-slate-400 mb-1">
+                    Start Date
+                  </label>
+                  <input
+                    type="date"
+                    value={loanStartDate}
+                    onChange={(e) => setLoanStartDate(e.target.value)}
                     className="w-full px-2.5 py-1.5 rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs outline-none"
                   />
                 </div>
                 <div>
                   <label className="block text-[11px] font-semibold text-gray-600 dark:text-slate-400 mb-1">
-                    Tenure (Months)
+                    First EMI / Payment Date
                   </label>
                   <input
-                    type="number" inputMode="decimal"
-                    value={loanPeriod}
-                    onChange={(e) => setLoanPeriod(e.target.value)}
+                    type="date"
+                    value={loanFirstEmiDate}
+                    onChange={(e) => setLoanFirstEmiDate(e.target.value)}
                     className="w-full px-2.5 py-1.5 rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs outline-none"
                   />
                 </div>
@@ -623,160 +739,7 @@ export const QuickAddModal: React.FC<QuickAddModalProps> = ({
             </form>
           )}
 
-          {/* 4. CREDIT CARD FORM */}
-          {activeType === 'credit' && (
-            <form onSubmit={handleSubmitCreditCard} className="space-y-3">
-              <div>
-                <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">
-                  Card Name
-                </label>
-                <input
-                  type="text"
-                  placeholder="e.g. HDFC Regalia"
-                  value={cardName}
-                  onChange={(e) => setCardName(e.target.value)}
-                  className="w-full px-3 py-2.5 min-h-[2.75rem] rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm outline-none"
-                  required
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">
-                    Bank Name
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="e.g. ICICI"
-                    value={cardBank}
-                    onChange={(e) => setCardBank(e.target.value)}
-                    className="w-full px-3 py-2.5 min-h-[2.75rem] rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm outline-none"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">
-                    Total Credit Limit ({currency})
-                  </label>
-                  <input
-                    type="number" inputMode="decimal"
-                    placeholder="150000"
-                    value={cardLimit}
-                    onChange={(e) => setCardLimit(e.target.value)}
-                    className="w-full px-3 py-2.5 min-h-[2.75rem] rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm outline-none"
-                    required
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">
-                  Current Used / Outstanding Amount ({currency})
-                </label>
-                <input
-                  type="number"
-                  inputMode="decimal"
-                  placeholder="0.00"
-                  value={cardUsedAmount}
-                  onChange={(e) => setCardUsedAmount(e.target.value)}
-                  className="w-full px-3 py-2.5 min-h-[2.75rem] rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm outline-none font-semibold text-red-500"
-                />
-                <p className="text-[10px] text-gray-400 mt-1">
-                  Enter any existing unpaid balance or statement due on this card.
-                </p>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">
-                    Statement Date (Day of Month)
-                  </label>
-                  <input
-                    type="number" inputMode="decimal"
-                    min="1"
-                    max="31"
-                    value={cardStatementDate}
-                    onChange={(e) => setCardStatementDate(e.target.value)}
-                    className="w-full px-3 py-2.5 min-h-[2.75rem] rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm outline-none"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">
-                    Payment Due Date (Day of Month)
-                  </label>
-                  <input
-                    type="number" inputMode="decimal"
-                    min="1"
-                    max="31"
-                    value={cardDueDate}
-                    onChange={(e) => setCardDueDate(e.target.value)}
-                    className="w-full px-3 py-2.5 min-h-[2.75rem] rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm outline-none"
-                  />
-                </div>
-              </div>
-
-              <button
-                type="submit"
-                disabled={submitting}
-                className="w-full py-3 min-h-[3rem] rounded-xl bg-brand-600 hover:bg-brand-700 text-white font-semibold text-sm shadow-md shadow-brand-500/30 transition-all mt-4"
-              >
-                {submitting ? 'Saving...' : 'Add Credit Card'}
-              </button>
-            </form>
-          )}
-
-          {/* 5. PAY EMI FORM */}
-          {activeType === 'emi' && (
-            <form onSubmit={handleSubmitPayEMI} className="space-y-3">
-              <div>
-                <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">
-                  Select Active Loan
-                </label>
-                <select
-                  value={payLoanId}
-                  onChange={(e) => setPayLoanId(e.target.value)}
-                  className="w-full px-3 py-2.5 min-h-[2.75rem] rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm outline-none"
-                  required
-                >
-                  <option value="">Choose Loan</option>
-                  {loans
-                    .filter((l) => l.status === 'ACTIVE')
-                    .map((l) => (
-                      <option key={l.id} value={l.id}>
-                        {l.name} - EMI: {currency}{l.emiAmount.toLocaleString()} (Bal: {currency}{l.outstandingBalance.toLocaleString()})
-                      </option>
-                    ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">
-                  Pay From Account
-                </label>
-                <select
-                  value={payLoanAccount}
-                  onChange={(e) => setPayLoanAccount(e.target.value)}
-                  className="w-full px-3 py-2.5 min-h-[2.75rem] rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm outline-none"
-                >
-                  <option value="">Choose Account</option>
-                  {accounts.map((acc) => (
-                    <option key={acc.id} value={acc.id}>
-                      {acc.name} ({currency}{acc.balance.toLocaleString()})
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <button
-                type="submit"
-                disabled={submitting}
-                className="w-full py-3 min-h-[3rem] rounded-xl bg-brand-600 hover:bg-brand-700 text-white font-semibold text-sm shadow-md shadow-brand-500/30 transition-all mt-4"
-              >
-                {submitting ? 'Processing...' : 'Pay EMI Now'}
-              </button>
-            </form>
-          )}
-
-          {/* 6. REMINDER FORM */}
+          {/* 4. REMINDER FORM */}
           {activeType === 'reminder' && (
             <form onSubmit={handleSubmitReminder} className="space-y-3">
               <div>
@@ -867,71 +830,6 @@ export const QuickAddModal: React.FC<QuickAddModalProps> = ({
                 className="w-full py-3 min-h-[3rem] rounded-xl bg-brand-600 hover:bg-brand-700 text-white font-semibold text-sm shadow-md shadow-brand-500/30 transition-all mt-4"
               >
                 {submitting ? 'Saving...' : 'Set Reminder'}
-              </button>
-            </form>
-          )}
-
-          {/* 7. TRANSFER FORM */}
-          {activeType === 'transfer' && (
-            <form onSubmit={handleSubmitTransfer} className="space-y-3">
-              <div>
-                <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">
-                  From Account
-                </label>
-                <select
-                  value={trFromAcc}
-                  onChange={(e) => setTrFromAcc(e.target.value)}
-                  className="w-full px-3 py-2.5 min-h-[2.75rem] rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm outline-none"
-                  required
-                >
-                  <option value="">Select Source Account</option>
-                  {accounts.map((acc) => (
-                    <option key={acc.id} value={acc.id}>
-                      {acc.name} ({currency}{acc.balance.toLocaleString()})
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">
-                  To Account
-                </label>
-                <select
-                  value={trToAcc}
-                  onChange={(e) => setTrToAcc(e.target.value)}
-                  className="w-full px-3 py-2.5 min-h-[2.75rem] rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm outline-none"
-                  required
-                >
-                  <option value="">Select Destination Account</option>
-                  {accounts.map((acc) => (
-                    <option key={acc.id} value={acc.id}>
-                      {acc.name} ({currency}{acc.balance.toLocaleString()})
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">
-                  Transfer Amount ({currency})
-                </label>
-                <input
-                  type="number" inputMode="decimal"
-                  placeholder="5000"
-                  value={trAmount}
-                  onChange={(e) => setTrAmount(e.target.value)}
-                  className="w-full px-3 py-2.5 min-h-[2.75rem] rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm outline-none"
-                  required
-                />
-              </div>
-
-              <button
-                type="submit"
-                disabled={submitting}
-                className="w-full py-3 min-h-[3rem] rounded-xl bg-brand-600 hover:bg-brand-700 text-white font-semibold text-sm shadow-md shadow-brand-500/30 transition-all mt-4"
-              >
-                {submitting ? 'Transferring...' : 'Execute Transfer'}
               </button>
             </form>
           )}

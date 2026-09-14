@@ -154,13 +154,18 @@ export async function downloadFullCalendarIcs(currency = '₹') {
 
   for (const l of loans) {
     if (!l.remainingEmis || l.remainingEmis <= 0) continue;
+    const freqRule =
+      l.emiFrequency === 'WEEKLY' ? 'FREQ=WEEKLY' :
+      l.emiFrequency === 'QUARTERLY' ? 'FREQ=MONTHLY;INTERVAL=3' :
+      l.emiFrequency === 'YEARLY' ? 'FREQ=YEARLY' :
+      'FREQ=MONTHLY';
     events.push({
       uid: `loan-${l.id}@smartfinance`,
       title: `EMI: ${l.name} — ${money(currency, l.emiAmount)}`,
       description: [l.bankName ? `Bank: ${l.bankName}` : '', `Remaining EMIs: ${l.remainingEmis}`].filter(Boolean).join('\n'),
       start: new Date(l.nextDueDate),
       time: '09:00',
-      rrule: `FREQ=MONTHLY;COUNT=${l.remainingEmis}`,
+      rrule: `${freqRule};COUNT=${l.remainingEmis}`,
       categories: 'Loan EMI',
     });
   }

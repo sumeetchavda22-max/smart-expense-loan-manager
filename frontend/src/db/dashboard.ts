@@ -14,10 +14,11 @@ export async function computeDashboard(): Promise<DashboardData> {
   const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
   const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
 
-  const [accounts, salaries, allExpenses, loans, creditCards, allReminders, budgets, categories] = await Promise.all([
+  const [accounts, salaries, allExpenses, allIncomes, loans, creditCards, allReminders, budgets, categories] = await Promise.all([
     db.getAll('accounts'),
     db.getAllFromIndex('salaries', 'byMonth', currentMonth),
     db.getAll('expenses'),
+    db.getAll('incomes'),
     db.getAllFromIndex('loans', 'byStatus', 'ACTIVE'),
     db.getAll('creditCards'),
     db.getAll('reminders'),
@@ -41,11 +42,14 @@ export async function computeDashboard(): Promise<DashboardData> {
   const totalMonthExpenses = monthExpenses.reduce((acc, e) => acc + e.amount, 0);
   const totalExpenses = allExpenses.reduce((acc, e) => acc + e.amount, 0);
 
+  const monthIncomes = allIncomes.filter((i) => inMonth(i.date));
+  const totalIncome = totalSalary + monthIncomes.reduce((acc, i) => acc + i.amount, 0);
+
   const totalLoanBalance = loans.reduce((acc, l) => acc + l.outstandingBalance, 0);
   const totalMonthlyEMI = loans.reduce((acc, l) => acc + l.emiAmount, 0);
   const totalCreditCardDue = creditCards.reduce((acc, c) => acc + c.totalDue, 0);
 
-  const savings = Math.max(0, totalSalary - totalMonthExpenses);
+  const savings = Math.max(0, totalIncome - totalMonthExpenses);
 
   const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
   const todayEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59);
@@ -90,6 +94,7 @@ export async function computeDashboard(): Promise<DashboardData> {
   return {
     currentBalance,
     totalSalary,
+    totalIncome,
     totalExpenses,
     totalMonthExpenses,
     totalLoanBalance,

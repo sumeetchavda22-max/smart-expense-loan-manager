@@ -75,6 +75,7 @@ export async function resetAllData(): Promise<void> {
   const db = await getDb();
   const stores = [
     'expenses',
+    'incomes',
     'salaries',
     'loanPayments',
     'loans',

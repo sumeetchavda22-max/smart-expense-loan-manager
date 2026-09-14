@@ -146,8 +146,8 @@ export const IncomeVsExpenseChart: React.FC = () => {
     labels: ['This Month'],
     datasets: [
       {
-        label: 'Income / Salary',
-        data: [dashboard?.totalSalary || 0],
+        label: 'Income',
+        data: [dashboard?.totalIncome || 0],
         backgroundColor: '#10B981',
         borderRadius: 10,
         maxBarThickness: 64,

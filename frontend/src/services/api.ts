@@ -1,6 +1,7 @@
 import {
   DashboardData,
   Expense,
+  Income,
   Salary,
   Loan,
   CreditCard,
@@ -39,8 +40,28 @@ export async function createExpense(formData: FormData): Promise<Expense> {
   return repo.createExpense(formData) as unknown as Promise<Expense>;
 }
 
+export async function updateExpense(id: string, data: Record<string, any>): Promise<Expense> {
+  return repo.updateExpense(id, data) as unknown as Promise<Expense>;
+}
+
 export async function deleteExpense(id: string): Promise<void> {
   return repo.deleteExpense(id);
+}
+
+export async function fetchIncomes(): Promise<Income[]> {
+  return repo.listIncomes() as unknown as Promise<Income[]>;
+}
+
+export async function createIncome(data: any): Promise<Income> {
+  return repo.createIncome(data) as unknown as Promise<Income>;
+}
+
+export async function updateIncome(id: string, data: Record<string, any>): Promise<Income> {
+  return repo.updateIncome(id, data) as unknown as Promise<Income>;
+}
+
+export async function deleteIncome(id: string): Promise<void> {
+  return repo.deleteIncome(id);
 }
 
 export async function fetchSalaries(): Promise<Salary[]> {
@@ -113,6 +134,18 @@ export async function markReminderComplete(id: string): Promise<Reminder> {
 
 export async function fetchCategories(): Promise<Category[]> {
   return repo.listCategories() as unknown as Promise<Category[]>;
+}
+
+export async function createCategory(data: any): Promise<Category> {
+  return repo.createCategory(data) as unknown as Promise<Category>;
+}
+
+export async function updateCategory(id: string, data: Record<string, any>): Promise<Category> {
+  return repo.updateCategory(id, data) as unknown as Promise<Category>;
+}
+
+export async function deleteCategory(id: string): Promise<void> {
+  return repo.deleteCategory(id);
 }
 
 export async function fetchSettings(): Promise<Settings> {

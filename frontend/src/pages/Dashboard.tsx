@@ -31,14 +31,12 @@ const daysUntil = (dateStr: string) => {
 
 const quickActions = [
   { id: 'expense', label: '+ Expense', icon: 'remove_circle_outline', tone: 'text-alert-coral' },
-  { id: 'salary', label: '+ Income', icon: 'add_circle_outline', tone: 'text-cashflow-emerald' },
+  { id: 'income', label: '+ Income', icon: 'add_circle_outline', tone: 'text-cashflow-emerald' },
   { id: 'loan', label: 'Loan/EMI', icon: 'real_estate_agent', tone: 'text-brand-600 dark:text-primary' },
-  { id: 'credit', label: 'Cards', icon: 'credit_card', tone: 'text-blue-600 dark:text-secondary' },
-  { id: 'transfer', label: 'Transfer', icon: 'sync_alt', tone: 'text-gray-900 dark:text-text-primary' },
 ];
 
 export const Dashboard: React.FC<DashboardProps> = ({ onOpenQuickAdd, onNavigate }) => {
-  const { dashboard, loading, currency, loans, expenses, salaries } = useFinance();
+  const { dashboard, loading, currency, loans, expenses, incomes, salaries } = useFinance();
 
   if (loading) {
     return (
@@ -54,7 +52,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onOpenQuickAdd, onNavigate
   }
 
   const d = dashboard || {
-    currentBalance: 0, totalSalary: 0, totalExpenses: 0, totalMonthExpenses: 0, totalLoanBalance: 0,
+    currentBalance: 0, totalSalary: 0, totalIncome: 0, totalExpenses: 0, totalMonthExpenses: 0, totalLoanBalance: 0,
     totalMonthlyEMI: 0, savings: 0, cashInHand: 0, bankBalance: 0, totalCreditCardDue: 0,
     upcomingPayments: [], todayRemindersCount: 0, todayReminders: [], monthlyBudget: 0,
     monthlyRemaining: 0, pieChartData: [], monthlyTrend: undefined,
@@ -62,7 +60,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onOpenQuickAdd, onNavigate
 
   const today = new Date();
   const monthLabel = today.toLocaleDateString('en-IN', { month: 'long', year: 'numeric' });
-  const spendRatio = d.totalSalary > 0 ? Math.min(100, Math.round((d.totalMonthExpenses / d.totalSalary) * 100)) : 0;
+  const spendRatio = d.totalIncome > 0 ? Math.min(100, Math.round((d.totalMonthExpenses / d.totalIncome) * 100)) : 0;
   const cashflowStatus =
     spendRatio >= 90 ? { label: 'Overspending', tone: 'text-alert-coral' } :
     spendRatio >= 70 ? { label: 'Moderate Spend', tone: 'text-warning-amber' } :
@@ -79,7 +77,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onOpenQuickAdd, onNavigate
   const topLoan = activeLoans[0];
   const otherLoans = activeLoans.slice(1, 3);
 
-  // Unified recent activity feed: expenses (debit) + salary credits, newest first.
+  // Unified recent activity feed: expenses (debit) + salary/income credits, newest first.
   type Tx = { id: string; title: string; sub: string; amount: number; credit: boolean; icon: string; tone: string; ring: string; date: string };
   const txs: Tx[] = [
     ...(expenses || []).slice(0, 8).map((e) => ({
@@ -87,8 +85,13 @@ export const Dashboard: React.FC<DashboardProps> = ({ onOpenQuickAdd, onNavigate
       amount: e.amount, credit: false, icon: 'shopping_cart', tone: 'text-alert-coral', ring: 'bg-alert-coral/15 border-alert-coral/30',
       date: e.date,
     })),
+    ...(incomes || []).slice(0, 8).map((i) => ({
+      id: `i-${i.id}`, title: i.title, sub: `Income • ${new Date(i.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}`,
+      amount: i.amount, credit: true, icon: 'payments', tone: 'text-cashflow-emerald', ring: 'bg-cashflow-emerald/15 border-cashflow-emerald/30',
+      date: i.date,
+    })),
     ...(salaries || []).slice(0, 4).map((s) => ({
-      id: `s-${s.id}`, title: s.companyName, sub: `Income • ${new Date(s.paymentDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}`,
+      id: `s-${s.id}`, title: s.companyName, sub: `Salary • ${new Date(s.paymentDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}`,
       amount: s.inHandSalary, credit: true, icon: 'payments', tone: 'text-cashflow-emerald', ring: 'bg-cashflow-emerald/15 border-cashflow-emerald/30',
       date: s.paymentDate,
     })),
@@ -158,7 +161,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onOpenQuickAdd, onNavigate
             <div className="flex items-center justify-between text-body-sm font-body-sm mb-1.5 gap-2">
               <span className="text-gray-500 dark:text-text-secondary flex items-center gap-1 truncate">
                 <span className="w-1.5 h-1.5 rounded-full bg-cashflow-emerald shrink-0" />
-                Salary: <strong className="text-gray-900 dark:text-text-primary font-semibold tabular-nums">{currency}{fmt(d.totalSalary)}</strong>
+                Income: <strong className="text-gray-900 dark:text-text-primary font-semibold tabular-nums">{currency}{fmt(d.totalIncome)}</strong>
               </span>
               <span className="text-gray-500 dark:text-text-secondary shrink-0 tabular-nums">
                 Spent: <strong className="text-gray-900 dark:text-text-primary font-semibold">{currency}{fmt(d.totalMonthExpenses)}</strong> ({spendRatio}%)
@@ -173,10 +176,32 @@ export const Dashboard: React.FC<DashboardProps> = ({ onOpenQuickAdd, onNavigate
             <div className="flex justify-between items-center mt-1">
               <span className={`text-label-caps font-label-caps ${cashflowStatus.tone}`}>{cashflowStatus.label}</span>
               <span className="text-label-caps font-label-caps text-gray-500 dark:text-text-secondary tabular-nums">
-                {currency}{fmt(Math.max(0, d.totalSalary - d.totalMonthExpenses))} remaining
+                {currency}{fmt(Math.max(0, d.totalIncome - d.totalMonthExpenses))} remaining
               </span>
             </div>
           </div>
+        </div>
+      </section>
+
+      {/* Income / Expenses / Balance summary strip — this month */}
+      <section className="grid grid-cols-3 gap-2">
+        <div className="liquid-glass-card rounded-xl p-3 border border-gray-200 dark:border-slate-border text-center">
+          <span className="text-label-caps font-label-caps text-gray-500 dark:text-text-secondary uppercase block">Income</span>
+          <span className="mt-1 block font-label-numeric-md text-label-numeric-md text-cashflow-emerald font-bold tabular-nums truncate">
+            {currency}{fmt(d.totalIncome)}
+          </span>
+        </div>
+        <div className="liquid-glass-card rounded-xl p-3 border border-gray-200 dark:border-slate-border text-center">
+          <span className="text-label-caps font-label-caps text-gray-500 dark:text-text-secondary uppercase block">Expenses</span>
+          <span className="mt-1 block font-label-numeric-md text-label-numeric-md text-alert-coral font-bold tabular-nums truncate">
+            {currency}{fmt(d.totalMonthExpenses)}
+          </span>
+        </div>
+        <div className="liquid-glass-card rounded-xl p-3 border border-gray-200 dark:border-slate-border text-center">
+          <span className="text-label-caps font-label-caps text-gray-500 dark:text-text-secondary uppercase block">Balance</span>
+          <span className="mt-1 block font-label-numeric-md text-label-numeric-md text-gray-900 dark:text-text-primary font-bold tabular-nums truncate">
+            {currency}{fmt(d.totalIncome - d.totalMonthExpenses)}
+          </span>
         </div>
       </section>
 
@@ -255,7 +280,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onOpenQuickAdd, onNavigate
                 </p>
               </div>
               <button
-                onClick={() => onOpenQuickAdd('emi')}
+                onClick={() => onNavigate?.('loans')}
                 className="shrink-0 bg-cashflow-emerald active:opacity-90 text-slate-950 font-body-sm text-body-sm font-bold px-3 py-1.5 rounded-lg active:scale-95 transition-transform shadow-md"
               >
                 Pay EMI
@@ -263,7 +288,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onOpenQuickAdd, onNavigate
             </div>
             <div className="mt-2.5">
               {(() => {
-                const pct = topLoan.loanPeriodMonths > 0 ? Math.round((topLoan.paidEmis / topLoan.loanPeriodMonths) * 100) : 0;
+                const pct = topLoan.totalEmis > 0 ? Math.round((topLoan.paidEmis / topLoan.totalEmis) * 100) : 0;
                 return (
                   <>
                     <div className="flex justify-between text-body-sm font-body-sm mb-1">
@@ -280,7 +305,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onOpenQuickAdd, onNavigate
           </div>
 
           {otherLoans.map((l) => {
-            const pct = l.loanPeriodMonths > 0 ? Math.round((l.paidEmis / l.loanPeriodMonths) * 100) : 0;
+            const pct = l.totalEmis > 0 ? Math.round((l.paidEmis / l.totalEmis) * 100) : 0;
             return (
               <button
                 key={l.id}
@@ -298,29 +323,17 @@ export const Dashboard: React.FC<DashboardProps> = ({ onOpenQuickAdd, onNavigate
         </section>
       )}
 
-      {/* Loans & Credit Cards quick nav (totals) */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        <button onClick={() => onNavigate?.('loans')} className="liquid-glass-card rounded-xl p-4 border border-gray-200 dark:border-slate-border text-left active:scale-[0.98] transition-transform">
-          <div className="flex items-center justify-between">
-            <span className="text-label-caps font-label-caps text-gray-500 dark:text-text-secondary uppercase flex items-center gap-1.5">
-              <span className="material-symbols-outlined text-warning-amber text-base">account_balance</span> Active loans
-            </span>
-            <span className="material-symbols-outlined text-gray-400 dark:text-text-secondary text-base">chevron_right</span>
-          </div>
-          <p className="mt-2 font-label-numeric-lg text-label-numeric-lg text-gray-900 dark:text-text-primary tabular-nums">{currency}{fmt(d.totalLoanBalance)}</p>
-          <p className="mt-1 text-body-sm font-body-sm text-gray-500 dark:text-text-secondary tabular-nums">Monthly EMI {currency}{fmt(d.totalMonthlyEMI)}</p>
-        </button>
-        <button onClick={() => onNavigate?.('credit')} className="liquid-glass-card rounded-xl p-4 border border-gray-200 dark:border-slate-border text-left active:scale-[0.98] transition-transform">
-          <div className="flex items-center justify-between">
-            <span className="text-label-caps font-label-caps text-gray-500 dark:text-text-secondary uppercase flex items-center gap-1.5">
-              <span className="material-symbols-outlined text-blue-600 dark:text-secondary text-base">credit_card</span> Credit card dues
-            </span>
-            <span className="material-symbols-outlined text-gray-400 dark:text-text-secondary text-base">chevron_right</span>
-          </div>
-          <p className="mt-2 font-label-numeric-lg text-label-numeric-lg text-gray-900 dark:text-text-primary tabular-nums">{currency}{fmt(d.totalCreditCardDue)}</p>
-          <p className="mt-1 text-body-sm font-body-sm text-gray-500 dark:text-text-secondary">Total outstanding</p>
-        </button>
-      </div>
+      {/* Loans quick nav (totals) */}
+      <button onClick={() => onNavigate?.('loans')} className="w-full liquid-glass-card rounded-xl p-4 border border-gray-200 dark:border-slate-border text-left active:scale-[0.98] transition-transform">
+        <div className="flex items-center justify-between">
+          <span className="text-label-caps font-label-caps text-gray-500 dark:text-text-secondary uppercase flex items-center gap-1.5">
+            <span className="material-symbols-outlined text-warning-amber text-base">account_balance</span> Active loans
+          </span>
+          <span className="material-symbols-outlined text-gray-400 dark:text-text-secondary text-base">chevron_right</span>
+        </div>
+        <p className="mt-2 font-label-numeric-lg text-label-numeric-lg text-gray-900 dark:text-text-primary tabular-nums">{currency}{fmt(d.totalLoanBalance)}</p>
+        <p className="mt-1 text-body-sm font-body-sm text-gray-500 dark:text-text-secondary tabular-nums">EMI obligation {currency}{fmt(d.totalMonthlyEMI)}</p>
+      </button>
 
       {/* Recent Transactions */}
       <section className="liquid-glass rounded-xl p-4 border border-gray-200 dark:border-slate-border">
