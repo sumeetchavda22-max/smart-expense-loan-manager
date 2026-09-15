@@ -10,7 +10,11 @@ export default defineConfig({
   plugins: [
     react(),
     VitePWA({
-      registerType: 'autoUpdate',
+      registerType: 'prompt',
+      // The app registers the service worker itself via the `virtual:pwa-register/react`
+      // hook (src/components/PWA/UpdateToast.tsx), so it can show a "Reload to update"
+      // toast instead of silently swapping the app under the user mid-session.
+      injectRegister: false,
       includeAssets: ['favicon.svg', 'favicon-64.png', 'apple-touch-icon.png'],
       manifest: {
         id: '/',

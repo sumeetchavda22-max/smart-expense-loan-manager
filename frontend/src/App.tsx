@@ -9,6 +9,8 @@ import { BottomNav } from './components/Navigation/BottomNav';
 import { QuickAddModal } from './components/Modals/QuickAddModal';
 import { GlobalSearchModal } from './components/Modals/GlobalSearchModal';
 import { PINLockModal } from './components/Modals/PINLockModal';
+import { InstallPrompt } from './components/PWA/InstallPrompt';
+import { UpdateToast } from './components/PWA/UpdateToast';
 
 import { Dashboard } from './pages/Dashboard';
 import { ExpensesPage } from './pages/ExpensesPage';
@@ -48,6 +50,10 @@ export const AppContent: React.FC = () => {
 
       {/* Security PIN Lock Screen Overlay */}
       <PINLockModal />
+
+      {/* PWA: service-worker update prompt (top) + install banner (bottom) */}
+      <UpdateToast />
+      <InstallPrompt />
 
       {/* Pull-to-refresh indicator (touch devices) */}
       {(pull > 0 || refreshing) && (

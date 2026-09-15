@@ -15,10 +15,13 @@ import {
   Loader2,
   CheckCircle2,
   AlertTriangle,
+  Smartphone,
+  Share,
 } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
 import { useFinance } from '../context/FinanceContext';
 import { useAuthPin } from '../context/AuthPinContext';
+import { usePWAInstall } from '../hooks/usePWAInstall';
 import { AlertsSettings } from '../components/Settings/AlertsSettings';
 import * as api from '../services/api';
 
@@ -26,6 +29,7 @@ export const SettingsPage: React.FC = () => {
   const { theme, setThemeMode } = useTheme();
   const { currency, updateCurrency, triggerNotification, refreshData } = useFinance();
   const { pinRequired, setPin, biometricAvailable, biometricEnabled, enableBiometric, disableBiometric } = useAuthPin();
+  const { installed: pwaInstalled, isIOS, canPromptInstall, promptInstall } = usePWAInstall();
 
   const [newPinInput, setNewPinInput] = useState('');
   const [showPinSetup, setShowPinSetup] = useState(false);
@@ -184,6 +188,49 @@ export const SettingsPage: React.FC = () => {
             </button>
           ))}
         </div>
+      </div>
+
+      {/* 2b. App Installation */}
+      <div className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-gray-100 dark:border-slate-800 shadow-sm space-y-3">
+        <h2 className="text-xs font-bold text-gray-500 uppercase tracking-wider">App Installation</h2>
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center space-x-3 min-w-0">
+            <Smartphone className="w-5 h-5 text-brand-600 shrink-0" />
+            <div className="min-w-0">
+              <p className="text-xs font-bold text-gray-900 dark:text-white">
+                {pwaInstalled ? 'Installed as an app' : 'Install SmartFinance'}
+              </p>
+              <p className="text-[11px] text-gray-500">
+                {pwaInstalled
+                  ? 'Running full-screen from your Home Screen'
+                  : 'Full-screen, offline-ready, no browser chrome'}
+              </p>
+            </div>
+          </div>
+          {pwaInstalled ? (
+            <CheckCircle2 className="w-5 h-5 text-emerald-500 shrink-0" />
+          ) : canPromptInstall ? (
+            <button
+              onClick={() => promptInstall()}
+              className="shrink-0 px-3 py-1.5 min-h-[2.5rem] rounded-xl bg-brand-600 text-white text-xs font-semibold shadow-sm"
+            >
+              Install
+            </button>
+          ) : null}
+        </div>
+
+        {!pwaInstalled && !canPromptInstall && (
+          <p className="text-[11px] text-gray-500 dark:text-slate-400 pt-2 border-t border-gray-100 dark:border-slate-800 flex items-center gap-1 flex-wrap">
+            {isIOS ? (
+              <>
+                Tap <Share className="w-3.5 h-3.5 inline text-brand-600" aria-hidden="true" /> <span className="font-semibold">Share</span> in Safari, then{' '}
+                <span className="font-semibold">Add to Home Screen</span>.
+              </>
+            ) : (
+              'Open your browser menu and choose "Install app" or "Add to Home Screen".'
+            )}
+          </p>
+        )}
       </div>
 
       {/* 3. Security PIN Lock */}
