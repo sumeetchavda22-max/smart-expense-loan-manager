@@ -17,6 +17,7 @@ import {
   AlertTriangle,
   Smartphone,
   Share,
+  Type,
 } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
 import { useFinance } from '../context/FinanceContext';
@@ -26,7 +27,7 @@ import { AlertsSettings } from '../components/Settings/AlertsSettings';
 import * as api from '../services/api';
 
 export const SettingsPage: React.FC = () => {
-  const { theme, setThemeMode } = useTheme();
+  const { theme, setThemeMode, font, setFont } = useTheme();
   const { currency, updateCurrency, triggerNotification, refreshData } = useFinance();
   const { pinRequired, setPin, biometricAvailable, biometricEnabled, enableBiometric, disableBiometric } = useAuthPin();
   const { installed: pwaInstalled, isIOS, canPromptInstall, promptInstall } = usePWAInstall();
@@ -167,6 +168,36 @@ export const SettingsPage: React.FC = () => {
             <div className="w-4 h-4 rounded-full bg-black border border-emerald-400"></div>
             <span className="text-xs font-bold">AMOLED Black</span>
           </button>
+        </div>
+      </div>
+
+      {/* 1b. Font / Typeface — applies to headings and body text app-wide (see ThemeContext.tsx) */}
+      <div className="p-5 rounded-2xl liquid-glass-card space-y-3">
+        <h2 className="text-xs font-bold text-gray-500 uppercase tracking-wider flex items-center gap-1.5">
+          <Type className="w-3.5 h-3.5" /> Font
+        </h2>
+        <div className="grid grid-cols-2 gap-2">
+          {(
+            [
+              { id: 'inter', label: 'Inter', sample: 'Aa', family: `'Inter', Roboto, sans-serif` },
+              { id: 'jakarta', label: 'Jakarta', sample: 'Aa', family: `'Plus Jakarta Sans', Inter, sans-serif` },
+              { id: 'serif', label: 'Serif', sample: 'Aa', family: `'Source Serif 4', Georgia, serif` },
+              { id: 'mono', label: 'Command Line', sample: 'Aa', family: `'JetBrains Mono', 'Courier New', monospace` },
+            ] as const
+          ).map((opt) => (
+            <button
+              key={opt.id}
+              onClick={() => setFont(opt.id)}
+              className={`py-2.5 px-3 rounded-xl border flex items-center gap-2.5 transition-all ${
+                font === opt.id
+                  ? 'bg-brand-600 text-white border-brand-600 shadow-md'
+                  : 'bg-gray-50 dark:bg-slate-800 text-gray-700 dark:text-slate-300 border-gray-200 dark:border-slate-700'
+              }`}
+            >
+              <span className="text-base leading-none" style={{ fontFamily: opt.family }}>{opt.sample}</span>
+              <span className="text-xs font-bold">{opt.label}</span>
+            </button>
+          ))}
         </div>
       </div>
 

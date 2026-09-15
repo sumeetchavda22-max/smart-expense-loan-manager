@@ -99,20 +99,23 @@ export default {
         },
       },
       fontFamily: {
-        sans: ['Inter', 'Roboto', 'sans-serif'],
+        // Driven by --font-sans/--font-heading custom properties (set in index.css, overridden
+        // at runtime by the font picker in Settings — see ThemeContext.tsx) so every one of these
+        // design-system tokens follows the user's chosen typeface, not just the plain h1-h6 rule.
+        sans: ['var(--font-sans)', 'Inter', 'Roboto', 'sans-serif'],
         serif: ['"Source Serif 4"', 'Georgia', 'serif'],
         // Design-system numeric font-family tokens (paired with matching fontSize tokens below)
-        'headline-lg-mobile': ['"Plus Jakarta Sans"', 'Inter', 'sans-serif'],
-        'label-numeric-md': ['Inter', 'sans-serif'],
-        'display-lg': ['"Plus Jakarta Sans"', 'Inter', 'sans-serif'],
-        'display-lg-mobile': ['"Plus Jakarta Sans"', 'Inter', 'sans-serif'],
-        'body-md': ['Inter', 'sans-serif'],
-        'body-sm': ['Inter', 'sans-serif'],
-        'headline-lg': ['"Plus Jakarta Sans"', 'Inter', 'sans-serif'],
-        'body-lg': ['Inter', 'sans-serif'],
-        'label-numeric-lg': ['"Plus Jakarta Sans"', 'Inter', 'sans-serif'],
-        'label-caps': ['Inter', 'sans-serif'],
-        'headline-sm': ['"Plus Jakarta Sans"', 'Inter', 'sans-serif'],
+        'headline-lg-mobile': ['var(--font-heading)', 'Inter', 'sans-serif'],
+        'label-numeric-md': ['var(--font-sans)', 'Inter', 'sans-serif'],
+        'display-lg': ['var(--font-heading)', 'Inter', 'sans-serif'],
+        'display-lg-mobile': ['var(--font-heading)', 'Inter', 'sans-serif'],
+        'body-md': ['var(--font-sans)', 'Inter', 'sans-serif'],
+        'body-sm': ['var(--font-sans)', 'Inter', 'sans-serif'],
+        'headline-lg': ['var(--font-heading)', 'Inter', 'sans-serif'],
+        'body-lg': ['var(--font-sans)', 'Inter', 'sans-serif'],
+        'label-numeric-lg': ['var(--font-heading)', 'Inter', 'sans-serif'],
+        'label-caps': ['var(--font-sans)', 'Inter', 'sans-serif'],
+        'headline-sm': ['var(--font-heading)', 'Inter', 'sans-serif'],
       },
       fontSize: {
         'headline-lg-mobile': ['1.5rem', { lineHeight: '2rem', letterSpacing: '-0.01em', fontWeight: '600' }],

@@ -65,11 +65,13 @@ export const AppContent: React.FC = () => {
   }, []);
 
   return (
-    <div className="min-h-dvh bg-gray-50 dark:bg-background text-gray-900 dark:text-text-primary flex flex-col relative overflow-x-hidden">
-      {/* Ambient peripheral glow gradients — institutional-fintech depth cue (dark theme only) */}
-      <div className="hidden dark:block fixed top-[-10%] left-[-15%] w-[320px] h-[320px] rounded-full bg-growth-teal/10 blur-[100px] pointer-events-none -z-10" />
-      <div className="hidden dark:block fixed top-[20%] right-[-10%] w-[280px] h-[280px] rounded-full bg-primary/10 blur-[90px] pointer-events-none -z-10" />
-      <div className="hidden dark:block fixed bottom-[15%] left-[-10%] w-[300px] h-[300px] rounded-full bg-debt-rose/10 blur-[110px] pointer-events-none -z-10" />
+    <div className="min-h-dvh bg-white dark:bg-background text-gray-900 dark:text-text-primary flex flex-col relative overflow-x-hidden">
+      {/* Ambient peripheral glow gradients — institutional-fintech depth cue for the plain Dark
+          theme only. Hidden in Light (pure white) and in AMOLED (app-ambient-glow rule below),
+          which are meant to be flat and gradient-free. */}
+      <div className="app-ambient-glow hidden dark:block fixed top-[-10%] left-[-15%] w-[320px] h-[320px] rounded-full bg-growth-teal/10 blur-[100px] pointer-events-none -z-10" />
+      <div className="app-ambient-glow hidden dark:block fixed top-[20%] right-[-10%] w-[280px] h-[280px] rounded-full bg-primary/10 blur-[90px] pointer-events-none -z-10" />
+      <div className="app-ambient-glow hidden dark:block fixed bottom-[15%] left-[-10%] w-[300px] h-[300px] rounded-full bg-debt-rose/10 blur-[110px] pointer-events-none -z-10" />
 
       {/* Security PIN Lock Screen Overlay */}
       <PINLockModal />

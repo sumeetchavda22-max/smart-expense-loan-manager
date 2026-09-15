@@ -13,7 +13,6 @@ import {
   Briefcase,
   Calendar,
   Calculator,
-  ChevronRight,
 } from 'lucide-react';
 
 interface BottomNavProps {
@@ -40,13 +39,13 @@ export const BottomNav: React.FC<BottomNavProps> = ({
   };
 
   const moreMenuItems = [
-    { id: 'salary', label: 'Salary Hub', desc: 'Net salary & deductions', icon: Briefcase, color: 'bg-emerald-500' },
-    { id: 'accounts', label: 'Bank Accounts', desc: 'Cash & Bank balances', icon: Wallet, color: 'bg-purple-500' },
-    { id: 'reminders', label: 'Due Reminders', desc: 'Bills, EMI & Recharge alerts', icon: Bell, color: 'bg-amber-500' },
-    { id: 'calendar', label: 'Calendar View', desc: 'Monthly dues & events grid', icon: Calendar, color: 'bg-indigo-500' },
-    { id: 'reports', label: 'Reports & Export', desc: 'Download PDF, Excel & CSV', icon: BarChart3, color: 'bg-teal-500' },
-    { id: 'calculators', label: 'Calculators', desc: 'EMI & loan interest calculator', icon: Calculator, color: 'bg-rose-500' },
-    { id: 'settings', label: 'Settings', desc: 'Dark mode, PIN & Currency', icon: SettingsIcon, color: 'bg-slate-600' },
+    { id: 'salary', label: 'Salary', icon: Briefcase, color: 'bg-emerald-500' },
+    { id: 'accounts', label: 'Accounts', icon: Wallet, color: 'bg-purple-500' },
+    { id: 'reminders', label: 'Reminders', icon: Bell, color: 'bg-amber-500' },
+    { id: 'calendar', label: 'Calendar', icon: Calendar, color: 'bg-indigo-500' },
+    { id: 'reports', label: 'Reports', icon: BarChart3, color: 'bg-teal-500' },
+    { id: 'calculators', label: 'Calculators', icon: Calculator, color: 'bg-rose-500' },
+    { id: 'settings', label: 'Settings', icon: SettingsIcon, color: 'bg-slate-600' },
   ];
 
   const tabs = [
@@ -154,8 +153,20 @@ export const BottomNav: React.FC<BottomNavProps> = ({
               </button>
             </div>
 
-            {/* Menu Grid */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 overflow-y-auto py-2 pr-1 min-h-0 no-scrollbar">
+            {/* Menu Grid — compact icon tiles, side by side, instead of one big list */}
+            <div className="grid grid-cols-4 gap-2.5 overflow-y-auto py-2 pr-1 min-h-0 no-scrollbar">
+              <button
+                onClick={() => {
+                  setMenuOpen(false);
+                  onOpenQuickAdd();
+                }}
+                className="p-2.5 rounded-2xl liquid-glass-card flex flex-col items-center justify-center gap-1.5 text-center group transition-all duration-200 active:scale-[0.95]"
+              >
+                <div className="w-10 h-10 rounded-xl liquid-fab flex items-center justify-center text-white shadow-md group-hover:scale-110 transition-transform">
+                  <Plus className="w-5 h-5 stroke-[2.5]" />
+                </div>
+                <p className="text-[10.5px] font-bold text-gray-900 dark:text-white leading-tight">Quick Create</p>
+              </button>
               {moreMenuItems.map((item) => {
                 const Icon = item.icon;
                 const isActive = activeTab === item.id;
@@ -163,22 +174,16 @@ export const BottomNav: React.FC<BottomNavProps> = ({
                   <button
                     key={item.id}
                     onClick={() => handleTabClick(item.id)}
-                    className={`p-3 xs:p-3.5 min-h-[3.5rem] rounded-2xl liquid-glass-card flex items-center justify-between text-left group transition-all duration-200 active:scale-[0.98] ${
+                    className={`p-2.5 rounded-2xl liquid-glass-card flex flex-col items-center justify-center gap-1.5 text-center group transition-all duration-200 active:scale-[0.95] ${
                       isActive
                         ? 'border-2 border-brand-500 bg-brand-50/50 dark:bg-brand-950/30'
                         : 'hover:border-brand-300'
                     }`}
                   >
-                    <div className="flex items-center space-x-3">
-                      <div className={`p-2.5 rounded-xl ${item.color} text-white shadow-md shadow-brand-500/10 group-hover:scale-110 transition-transform`}>
-                        <Icon className="w-4 h-4" />
-                      </div>
-                      <div>
-                        <p className="text-xs font-bold text-gray-900 dark:text-white">{item.label}</p>
-                        <p className="text-[10px] text-gray-500 dark:text-slate-400 line-clamp-1">{item.desc}</p>
-                      </div>
+                    <div className={`w-10 h-10 rounded-xl ${item.color} text-white shadow-md shadow-brand-500/10 flex items-center justify-center group-hover:scale-110 transition-transform`}>
+                      <Icon className="w-[18px] h-[18px]" />
                     </div>
-                    <ChevronRight className="w-4 h-4 text-gray-400 group-hover:translate-x-1 transition-transform" />
+                    <p className="text-[10.5px] font-bold text-gray-900 dark:text-white leading-tight">{item.label}</p>
                   </button>
                 );
               })}
