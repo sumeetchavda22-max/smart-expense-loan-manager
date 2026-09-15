@@ -18,9 +18,9 @@ export default defineConfig({
       includeAssets: ['favicon.svg', 'favicon-64.png', 'apple-touch-icon.png'],
       manifest: {
         id: '/',
-        name: 'Smart Expense & Loan Manager',
-        short_name: 'SmartFinance',
-        description: 'Modern Mobile-first Personal Expense & Loan Management PWA — your data stays on your device',
+        name: 'SMT-C',
+        short_name: 'SMT-C',
+        description: 'SMT-C — Modern Mobile-first Personal Expense & Loan Management PWA, your data stays on your device',
         theme_color: '#0088b0',
         background_color: '#ffffff',
         display: 'standalone',
@@ -29,6 +29,23 @@ export default defineConfig({
         scope: '/',
         lang: 'en',
         categories: ['finance', 'productivity'],
+        // Home Screen icon long-press menu (Android/desktop Chrome; iOS has no equivalent yet)
+        shortcuts: [
+          {
+            name: 'Add Expense',
+            short_name: 'Add Expense',
+            description: 'Log a new expense',
+            url: '/?quickadd=expense',
+            icons: [{ src: 'pwa-192x192.png', sizes: '192x192' }],
+          },
+          {
+            name: 'Reminders',
+            short_name: 'Reminders',
+            description: 'View upcoming dues',
+            url: '/?tab=reminders',
+            icons: [{ src: 'pwa-192x192.png', sizes: '192x192' }],
+          },
+        ],
         icons: [
           {
             src: 'pwa-192x192.png',
@@ -51,6 +68,12 @@ export default defineConfig({
       workbox: {
         // The whole app shell is cacheable — there is no data API to keep off the cache anymore.
         globPatterns: ['**/*.{js,css,html,svg,png,woff2}'],
+        // The PDF/Excel export libs (jsPDF + its canvas/purify deps, xlsx) are ~1.1MB combined
+        // and only ever load when a Reports page visitor actually taps Export (db/exporters.ts
+        // dynamic-imports them). Precaching them at install time would double the SW install
+        // size for a feature most sessions never touch — excluded here and instead cached at
+        // runtime, on first real use, by the CacheFirst rule below.
+        globIgnores: ['**/xlsx-*.js', '**/jspdf*.js', '**/html2canvas*.js', '**/purify.es-*.js', '**/index.es-*.js'],
         navigateFallbackDenylist: [/^\/api\//],
         runtimeCaching: [
           {
@@ -59,6 +82,14 @@ export default defineConfig({
             options: {
               cacheName: 'google-fonts',
               expiration: { maxEntries: 20, maxAgeSeconds: 60 * 60 * 24 * 365 },
+            },
+          },
+          {
+            urlPattern: ({ url }) => /\/(xlsx|jspdf|html2canvas|purify\.es|index\.es)-.*\.js$/.test(url.pathname),
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'export-libs',
+              expiration: { maxEntries: 10, maxAgeSeconds: 60 * 60 * 24 * 365 },
             },
           },
         ],

@@ -45,7 +45,7 @@ export const InstallPrompt: React.FC = () => {
       className="fixed left-3 right-3 z-[45] max-w-sm mx-auto animate-in slide-in-from-bottom fade-in"
       style={{ bottom: 'calc(var(--bottom-nav-h) + var(--safe-bottom) + 0.75rem)' }}
       role="dialog"
-      aria-label="Install SmartFinance"
+      aria-label="Install SMT-C"
     >
       <div className="liquid-glass-card rounded-2xl p-4 shadow-xl">
         {!showIOSSteps ? (
@@ -54,7 +54,7 @@ export const InstallPrompt: React.FC = () => {
               <Download className="w-5 h-5" />
             </div>
             <div className="min-w-0 flex-1">
-              <p className="text-xs font-bold text-gray-900 dark:text-white">Install SmartFinance</p>
+              <p className="text-xs font-bold text-gray-900 dark:text-white">Install SMT-C</p>
               <p className="text-[11px] text-gray-500 dark:text-slate-400 mt-0.5">
                 Add it to your Home Screen for a full-screen, offline-ready app.
               </p>

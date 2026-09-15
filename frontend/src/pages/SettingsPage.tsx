@@ -109,7 +109,7 @@ export const SettingsPage: React.FC = () => {
       await refreshData();
       flashData(true, `Restored ${restored} record${restored === 1 ? '' : 's'} from backup.`);
     } catch (e: any) {
-      flashData(false, e.message || 'That file could not be read as a SmartFinance backup.');
+      flashData(false, e.message || 'That file could not be read as a SMT-C backup.');
     } finally {
       setDataBusy(null);
     }
@@ -198,7 +198,7 @@ export const SettingsPage: React.FC = () => {
             <Smartphone className="w-5 h-5 text-brand-600 shrink-0" />
             <div className="min-w-0">
               <p className="text-xs font-bold text-gray-900 dark:text-white">
-                {pwaInstalled ? 'Installed as an app' : 'Install SmartFinance'}
+                {pwaInstalled ? 'Installed as an app' : 'Install SMT-C'}
               </p>
               <p className="text-[11px] text-gray-500">
                 {pwaInstalled
@@ -360,7 +360,7 @@ export const SettingsPage: React.FC = () => {
             <Upload className="w-5 h-5 text-blue-500 shrink-0" />
             <div className="min-w-0">
               <p className="text-xs font-bold text-gray-900 dark:text-white">Restore from a backup file</p>
-              <p className="text-[11px] text-gray-500">Pick a SmartFinance_Backup .json from Files</p>
+              <p className="text-[11px] text-gray-500">Pick a SMT-C_Backup .json from Files</p>
             </div>
           </div>
           <button

@@ -1,4 +1,4 @@
-# Smart Expense & Loan Manager — Mobile-First, On-Device PWA
+# SMT-C — Mobile-First, On-Device PWA
 
 A personal finance Progressive Web App built with **React, TypeScript, Tailwind CSS, and Vite**. Every record — expenses, salary, loans, credit cards, reminders — is stored **only in the browser that opened it** (IndexedDB). There is no database on a server anywhere; nothing you enter is ever sent off the device. Optimised for the iPhone 15 as a Home Screen app.
 
@@ -50,7 +50,7 @@ Open `http://localhost:3000`. No backend, no `.env`, no database setup — the a
 1. `npm run dev` as above (Vite prints a `Network: http://<ip>:3000` line — that's your PC's LAN IP).
 2. Allow the port through Windows Firewall once, as Administrator:
    ```powershell
-   New-NetFirewallRule -DisplayName "SmartFinance Vite dev (TCP 3000)" -Direction Inbound -Protocol TCP -LocalPort 3000 -Action Allow -Profile Private
+   New-NetFirewallRule -DisplayName "SMT-C Vite dev (TCP 3000)" -Direction Inbound -Protocol TCP -LocalPort 3000 -Action Allow -Profile Private
    ```
 3. On the iPhone (same Wi-Fi), open Safari → `http://<ip>:3000` → **Share → Add to Home Screen**.
 
@@ -72,7 +72,7 @@ By default, Settings → Email alerts → **"Compose in Mail"** always works wit
 1. Gmail: enable 2-Step Verification, then create an **App Password** at https://myaccount.google.com/apppasswords
 2. In the Vercel project → Settings → Environment Variables, add:
    - `SMTP_HOST=smtp.gmail.com`, `SMTP_PORT=465`, `SMTP_USER=you@gmail.com`, `SMTP_PASS=<16-char app password>`
-   - optional: `SMTP_FROM="SmartFinance <you@gmail.com>"`
+   - optional: `SMTP_FROM="SMT-C <you@gmail.com>"`
 3. Redeploy. In the app → Settings → Email alerts, **Send test** and **Send now** will now work.
 
 This relay (`frontend/api/send-email.ts`) is stateless — it stores nothing between requests; the client always tells it exactly what to send.
@@ -85,7 +85,7 @@ Reminders page (or Settings) → **Add to Calendar** downloads a `.ics` file and
 ## Backup, Restore & moving to a new phone
 
 Settings → Data Management:
-- **Backup** → downloads `SmartFinance_Backup_<date>.json` (save it to Files, iCloud Drive, etc.)
+- **Backup** → downloads `SMT-C_Backup_<date>.json` (save it to Files, iCloud Drive, etc.)
 - **Restore** → pick that file back from Files to reload everything, on this device or a new one
 
 This is the app's actual "file manager" integration — the File System Access API used on desktop Chrome isn't available in iOS Safari, so a save/pick flow through the Files app is the correct on-iPhone equivalent.

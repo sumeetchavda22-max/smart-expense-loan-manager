@@ -124,8 +124,8 @@ export const AuthPinProvider: React.FC<{ children: React.ReactNode }> = ({ child
       const credential = (await navigator.credentials.create({
         publicKey: {
           challenge: randomChallenge(),
-          rp: { name: 'SmartFinance' },
-          user: { id: userId, name: 'smartfinance-device', displayName: 'SmartFinance' },
+          rp: { name: 'SMT-C' },
+          user: { id: userId, name: 'smtc-device', displayName: 'SMT-C' },
           pubKeyCredParams: [
             { type: 'public-key', alg: -7 },
             { type: 'public-key', alg: -257 },

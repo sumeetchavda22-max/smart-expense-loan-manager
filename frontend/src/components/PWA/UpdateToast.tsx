@@ -42,7 +42,7 @@ export const UpdateToast: React.FC = () => {
           </div>
           <div className="min-w-0 flex-1">
             <p className="text-xs font-bold text-gray-900 dark:text-white">Update available</p>
-            <p className="text-[11px] text-gray-500 dark:text-slate-400 mt-0.5">A new version of SmartFinance is ready.</p>
+            <p className="text-[11px] text-gray-500 dark:text-slate-400 mt-0.5">A new version of SMT-C is ready.</p>
           </div>
           <button
             onClick={() => updateServiceWorker(true)}
@@ -70,7 +70,7 @@ export const UpdateToast: React.FC = () => {
         role="status"
       >
         <div className="liquid-glass-card rounded-2xl px-4 py-3 shadow-xl text-center">
-          <p className="text-[11px] font-semibold text-gray-700 dark:text-slate-300">SmartFinance is ready to work offline.</p>
+          <p className="text-[11px] font-semibold text-gray-700 dark:text-slate-300">SMT-C is ready to work offline.</p>
         </div>
       </div>
     );

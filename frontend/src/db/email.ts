@@ -37,8 +37,8 @@ async function postRelay(payload: { to: string; subject: string; text: string; h
 export async function sendTestEmail(to: string) {
   return postRelay({
     to,
-    subject: '✅ SmartFinance email alerts are working',
-    text: 'This confirms your SmartFinance relay is working. You will get a digest of what is due whenever you open the app.',
+    subject: '✅ SMT-C email alerts are working',
+    text: 'This confirms your SMT-C relay is working. You will get a digest of what is due whenever you open the app.',
     html: `<div style="font-family:-apple-system,Inter,Segoe UI,Roboto,sans-serif;padding:16px;"><h2>✅ Email alerts are working</h2><p style="color:#475569;">You'll get a digest of EMIs, card bills and reminders due soon, whenever you open the app.</p></div>`,
   });
 }
@@ -94,7 +94,7 @@ export async function composeMailto(daysAhead = 3) {
   const settings = await getSettings();
   const items = await collectDueItems(daysAhead);
   const to = settings.notifyEmail || '';
-  const subject = items.length ? digestSubject(items) : 'SmartFinance — nothing due soon';
+  const subject = items.length ? digestSubject(items) : 'SMT-C — nothing due soon';
   const body = items.length
     ? items.map((i) => `${whenLabel(i.inDays)}: ${i.title} (${i.kind}) — ${settings.currency}${i.amount.toLocaleString('en-IN')}`).join('\n')
     : 'Nothing due in the next few days.';

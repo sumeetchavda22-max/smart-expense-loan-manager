@@ -44,7 +44,7 @@ export async function exportBackup(): Promise<void> {
   );
 
   const backup = {
-    app: 'SmartFinance',
+    app: 'SMT-C',
     version: BACKUP_VERSION,
     exportedAt: new Date().toISOString(),
     data: {
@@ -66,7 +66,7 @@ export async function exportBackup(): Promise<void> {
   };
 
   const stamp = new Date().toISOString().slice(0, 10);
-  downloadJson(backup, `SmartFinance_Backup_${stamp}.json`);
+  downloadJson(backup, `SMT-C_Backup_${stamp}.json`);
 }
 
 /** Replaces everything currently stored with the contents of a previously exported backup file. */

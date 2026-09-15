@@ -31,7 +31,7 @@ function getTransport() {
 }
 
 function fromAddress() {
-  return process.env.SMTP_FROM || `SmartFinance <${process.env.SMTP_USER}>`;
+  return process.env.SMTP_FROM || `SMT-C <${process.env.SMTP_USER}>`;
 }
 
 const isValidEmail = (s: unknown): s is string => typeof s === 'string' && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s);

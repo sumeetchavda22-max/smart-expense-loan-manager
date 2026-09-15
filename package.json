@@ -2,7 +2,7 @@
   "name": "smart-expense-loan-manager",
   "version": "1.0.0",
   "private": true,
-  "description": "Smart Expense & Loan Manager - Mobile-first PWA for Personal Finance",
+  "description": "SMT-C - Mobile-first PWA for Personal Finance",
   "scripts": {
     "dev:backend": "cd backend && npm run dev",
     "dev:frontend": "cd frontend && npm run dev",

@@ -33,7 +33,7 @@ export async function exportPdf(currency = '₹') {
   const doc = new jsPDF();
 
   doc.setFontSize(18);
-  doc.text('Smart Expense & Loan Manager Report', 105, 16, { align: 'center' });
+  doc.text('SMT-C Report', 105, 16, { align: 'center' });
   doc.setFontSize(9);
   doc.setTextColor(120);
   doc.text(`Generated: ${new Date().toLocaleString()}`, 105, 22, { align: 'center' });
@@ -110,7 +110,7 @@ export async function exportPdf(currency = '₹') {
     margin: { left: 14, right: 14 },
   });
 
-  doc.save('SmartFinance_Report.pdf');
+  doc.save('SMT-C_Report.pdf');
 }
 
 export async function exportExcel() {
@@ -154,7 +154,7 @@ export async function exportExcel() {
   XLSX.utils.book_append_sheet(wb, loanSheet, 'Loans');
 
   const buf: ArrayBuffer = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
-  downloadBlob(new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }), 'SmartFinance_Export.xlsx');
+  downloadBlob(new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }), 'SMT-C_Export.xlsx');
 }
 
 export async function exportCsv() {

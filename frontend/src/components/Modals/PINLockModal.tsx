@@ -63,7 +63,7 @@ export const PINLockModal: React.FC = () => {
         <div>
           <h2 className="text-xl font-bold text-white tracking-tight">Enter Security PIN</h2>
           <p className="text-xs text-slate-400 mt-1">
-            {biometricPrompting ? 'Waiting for Face ID / Fingerprint…' : 'Smart Expense & Loan Manager is locked'}
+            {biometricPrompting ? 'Waiting for Face ID / Fingerprint…' : 'SMT-C is locked'}
           </p>
         </div>
 

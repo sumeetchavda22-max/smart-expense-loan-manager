@@ -1,6 +1,5 @@
 import React from 'react';
 import {
-  Wallet,
   Search,
   Moon,
   Sun,
@@ -32,12 +31,12 @@ export const Navbar: React.FC<NavbarProps> = ({
       <div className="max-w-4xl mx-auto flex items-center justify-between pt-2 min-h-[3.25rem]">
         {/* App Brand */}
         <div className="flex items-center space-x-2 xs:space-x-2.5 min-w-0">
-          <div className="w-10 h-10 shrink-0 rounded-xl bg-gradient-to-tr from-brand-600 to-accent2-500 flex items-center justify-center text-white shadow-md shadow-brand-500/20">
-            <Wallet className="w-5 h-5" />
+          <div className="w-10 h-10 shrink-0 rounded-xl bg-gradient-to-tr from-brand-600 to-accent2-500 flex items-center justify-center text-white font-extrabold text-lg shadow-md shadow-brand-500/20">
+            S
           </div>
           <div>
             <h1 className="font-bold text-base tracking-tight text-gray-900 dark:text-white leading-tight">
-              Smart<span className="text-brand-600 dark:text-brand-400">Finance</span>
+              SMT<span className="text-brand-600 dark:text-brand-400">-C</span>
             </h1>
             <p className="hidden xs:block text-[11px] text-gray-500 dark:text-slate-400 font-medium truncate">
               Expense & Loan Manager

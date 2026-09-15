@@ -17,7 +17,7 @@ export default {
       },
       colors: {
         // ---------------------------------------------------------------
-        // SmartFinance design system — "institutional-grade modern fintech"
+        // SMT-C design system — "institutional-grade modern fintech"
         // Deep slate-navy field with luminous emerald/teal/coral accents.
         // ---------------------------------------------------------------
         'text-primary': '#F9FAFB',

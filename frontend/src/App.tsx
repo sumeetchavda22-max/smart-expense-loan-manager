@@ -1,9 +1,10 @@
-import React, { useEffect, useState } from 'react';
-import { RefreshCw } from 'lucide-react';
+import React, { lazy, Suspense, useEffect, useState } from 'react';
+import { Loader2, RefreshCw } from 'lucide-react';
 import { ThemeProvider } from './context/ThemeContext';
 import { AuthPinProvider } from './context/AuthPinContext';
 import { FinanceProvider, useFinance } from './context/FinanceContext';
 import { usePullToRefresh } from './hooks/usePullToRefresh';
+import { usePWABadge } from './hooks/usePWABadge';
 import { Navbar } from './components/Navigation/Navbar';
 import { BottomNav } from './components/Navigation/BottomNav';
 import { QuickAddModal } from './components/Modals/QuickAddModal';
@@ -12,24 +13,33 @@ import { PINLockModal } from './components/Modals/PINLockModal';
 import { InstallPrompt } from './components/PWA/InstallPrompt';
 import { UpdateToast } from './components/PWA/UpdateToast';
 
+// Dashboard is the very first thing every launch shows, so it stays a normal eager import —
+// everything else loads on demand, so a phone doesn't pay for Reports/Calendar/etc. up front.
 import { Dashboard } from './pages/Dashboard';
-import { ExpensesPage } from './pages/ExpensesPage';
-import { SalaryPage } from './pages/SalaryPage';
-import { LoansPage } from './pages/LoansPage';
-import { AccountsPage } from './pages/AccountsPage';
-import { RemindersPage } from './pages/RemindersPage';
-import { CalendarPage } from './pages/CalendarPage';
-import { ReportsPage } from './pages/ReportsPage';
-import { CalculatorsPage } from './pages/CalculatorsPage';
-import { SettingsPage } from './pages/SettingsPage';
+const ExpensesPage = lazy(() => import('./pages/ExpensesPage').then((m) => ({ default: m.ExpensesPage })));
+const SalaryPage = lazy(() => import('./pages/SalaryPage').then((m) => ({ default: m.SalaryPage })));
+const LoansPage = lazy(() => import('./pages/LoansPage').then((m) => ({ default: m.LoansPage })));
+const AccountsPage = lazy(() => import('./pages/AccountsPage').then((m) => ({ default: m.AccountsPage })));
+const RemindersPage = lazy(() => import('./pages/RemindersPage').then((m) => ({ default: m.RemindersPage })));
+const CalendarPage = lazy(() => import('./pages/CalendarPage').then((m) => ({ default: m.CalendarPage })));
+const ReportsPage = lazy(() => import('./pages/ReportsPage').then((m) => ({ default: m.ReportsPage })));
+const CalculatorsPage = lazy(() => import('./pages/CalculatorsPage').then((m) => ({ default: m.CalculatorsPage })));
+const SettingsPage = lazy(() => import('./pages/SettingsPage').then((m) => ({ default: m.SettingsPage })));
+
+const PageLoading: React.FC = () => (
+  <div className="flex items-center justify-center py-24 text-brand-600 dark:text-brand-400">
+    <Loader2 className="w-6 h-6 animate-spin" />
+  </div>
+);
 
 export const AppContent: React.FC = () => {
   const [activeTab, setActiveTab] = useState<string>('dashboard');
   const [quickAddOpen, setQuickAddOpen] = useState<boolean>(false);
   const [quickAddDefaultTab, setQuickAddDefaultTab] = useState<string>('expense');
   const [searchOpen, setSearchOpen] = useState<boolean>(false);
-  const { refreshData } = useFinance();
+  const { refreshData, reminders } = useFinance();
   const { pull, refreshing, ready } = usePullToRefresh(refreshData);
+  usePWABadge(reminders);
 
   // Each tab is its own "screen" on a phone: always start it from the top
   useEffect(() => {
@@ -40,6 +50,19 @@ export const AppContent: React.FC = () => {
     setQuickAddDefaultTab(tab);
     setQuickAddOpen(true);
   };
+
+  // Deep links from the Home Screen icon's long-press shortcuts (manifest `shortcuts` in
+  // vite.config.ts), e.g. "/?quickadd=expense" or "/?tab=reminders" — read once on launch,
+  // then scrub the query string so a later in-app refresh doesn't replay it.
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const tab = params.get('tab');
+    const quickadd = params.get('quickadd');
+    if (tab) setActiveTab(tab);
+    if (quickadd) handleOpenQuickAdd(quickadd);
+    if (tab || quickadd) window.history.replaceState({}, '', window.location.pathname);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return (
     <div className="min-h-dvh bg-gray-50 dark:bg-background text-gray-900 dark:text-text-primary flex flex-col relative overflow-x-hidden">
@@ -87,15 +110,19 @@ export const AppContent: React.FC = () => {
             onNavigate={(tab) => setActiveTab(tab)}
           />
         )}
-        {activeTab === 'expenses' && <ExpensesPage onOpenQuickAdd={handleOpenQuickAdd} />}
-        {activeTab === 'salary' && <SalaryPage onOpenQuickAdd={() => handleOpenQuickAdd('salary')} />}
-        {activeTab === 'loans' && <LoansPage onOpenQuickAdd={handleOpenQuickAdd} />}
-        {activeTab === 'accounts' && <AccountsPage onOpenQuickAdd={handleOpenQuickAdd} />}
-        {activeTab === 'reminders' && <RemindersPage onOpenQuickAdd={handleOpenQuickAdd} />}
-        {activeTab === 'calendar' && <CalendarPage />}
-        {activeTab === 'reports' && <ReportsPage />}
-        {activeTab === 'calculators' && <CalculatorsPage />}
-        {activeTab === 'settings' && <SettingsPage />}
+        {activeTab !== 'dashboard' && (
+          <Suspense fallback={<PageLoading />}>
+            {activeTab === 'expenses' && <ExpensesPage onOpenQuickAdd={handleOpenQuickAdd} />}
+            {activeTab === 'salary' && <SalaryPage onOpenQuickAdd={() => handleOpenQuickAdd('salary')} />}
+            {activeTab === 'loans' && <LoansPage onOpenQuickAdd={handleOpenQuickAdd} />}
+            {activeTab === 'accounts' && <AccountsPage onOpenQuickAdd={handleOpenQuickAdd} />}
+            {activeTab === 'reminders' && <RemindersPage onOpenQuickAdd={handleOpenQuickAdd} />}
+            {activeTab === 'calendar' && <CalendarPage />}
+            {activeTab === 'reports' && <ReportsPage />}
+            {activeTab === 'calculators' && <CalculatorsPage />}
+            {activeTab === 'settings' && <SettingsPage />}
+          </Suspense>
+        )}
       </main>
 
       {/* Bottom Navigation Bar with FAB (+) */}

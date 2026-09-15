@@ -68,12 +68,12 @@ const repeatToRrule = (repeat: string | null | undefined): string | undefined =>
   }
 };
 
-function buildIcs(events: IcsEvent[], calName = 'SmartFinance'): string {
+function buildIcs(events: IcsEvent[], calName = 'SMT-C'): string {
   const now = fmtUtcStamp(new Date());
   const lines: string[] = [
     'BEGIN:VCALENDAR',
     'VERSION:2.0',
-    'PRODID:-//SmartFinance//Smart Expense & Loan Manager//EN',
+    'PRODID:-//SMT-C//SMT-C//EN',
     'CALSCALE:GREGORIAN',
     'METHOD:PUBLISH',
     `X-WR-CALNAME:${esc(calName)}`,
@@ -113,16 +113,16 @@ export async function downloadReminderIcs(reminderId: string, currency = '₹') 
   const ics = buildIcs(
     [
       {
-        uid: `reminder-${rem.id}@smartfinance`,
+        uid: `reminder-${rem.id}@smt-c`,
         title: `${rem.title} — ${money(currency, rem.amount)}`,
         description: [`Type: ${rem.type}`, `Amount: ${money(currency, rem.amount)}`, rem.notes || ''].filter(Boolean).join('\n'),
         start: new Date(rem.dueDate),
         time: rem.dueTime || '09:00',
         rrule: repeatToRrule(rem.repeat),
-        categories: 'SmartFinance',
+        categories: 'SMT-C',
       },
     ],
-    'SmartFinance Reminder'
+    'SMT-C Reminder'
   );
   const safe = rem.title.replace(/[^\w-]+/g, '_').slice(0, 40) || 'reminder';
   downloadText(ics, `${safe}.ics`, 'text/calendar');
@@ -142,7 +142,7 @@ export async function downloadFullCalendarIcs(currency = '₹') {
 
   for (const r of reminders.filter((r) => !r.isCompleted)) {
     events.push({
-      uid: `reminder-${r.id}@smartfinance`,
+      uid: `reminder-${r.id}@smt-c`,
       title: `${r.title} — ${money(currency, r.amount)}`,
       description: [`Type: ${r.type}`, r.notes || ''].filter(Boolean).join('\n'),
       start: new Date(r.dueDate),
@@ -160,7 +160,7 @@ export async function downloadFullCalendarIcs(currency = '₹') {
       l.emiFrequency === 'YEARLY' ? 'FREQ=YEARLY' :
       'FREQ=MONTHLY';
     events.push({
-      uid: `loan-${l.id}@smartfinance`,
+      uid: `loan-${l.id}@smt-c`,
       title: `EMI: ${l.name} — ${money(currency, l.emiAmount)}`,
       description: [l.bankName ? `Bank: ${l.bankName}` : '', `Remaining EMIs: ${l.remainingEmis}`].filter(Boolean).join('\n'),
       start: new Date(l.nextDueDate),
@@ -172,7 +172,7 @@ export async function downloadFullCalendarIcs(currency = '₹') {
 
   for (const c of cards) {
     events.push({
-      uid: `card-due-${c.id}@smartfinance`,
+      uid: `card-due-${c.id}@smt-c`,
       title: `Card bill due: ${c.cardName}${c.totalDue ? ` — ${money(currency, c.totalDue)}` : ''}`,
       description: `${c.bankName}\nMinimum due: ${money(currency, c.minimumDue)}`,
       start: nextOccurrenceOfDay(c.dueDate),
@@ -182,7 +182,7 @@ export async function downloadFullCalendarIcs(currency = '₹') {
       categories: 'Credit Card',
     });
     events.push({
-      uid: `card-stmt-${c.id}@smartfinance`,
+      uid: `card-stmt-${c.id}@smt-c`,
       title: `Statement: ${c.cardName}`,
       description: `${c.bankName} statement generated`,
       start: nextOccurrenceOfDay(c.statementDate),
@@ -195,7 +195,7 @@ export async function downloadFullCalendarIcs(currency = '₹') {
 
   for (const s of salaries) {
     events.push({
-      uid: `salary-${s.id}@smartfinance`,
+      uid: `salary-${s.id}@smt-c`,
       title: `Salary credit: ${s.companyName}`,
       start: nextOccurrenceOfDay(s.salaryDate),
       time: '10:00',
@@ -205,6 +205,6 @@ export async function downloadFullCalendarIcs(currency = '₹') {
     });
   }
 
-  const ics = buildIcs(events, 'SmartFinance');
-  downloadText(ics, 'SmartFinance_Calendar.ics', 'text/calendar');
+  const ics = buildIcs(events, 'SMT-C');
+  downloadText(ics, 'SMT-C_Calendar.ics', 'text/calendar');
 }

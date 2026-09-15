@@ -59,8 +59,8 @@ const money = (currency: string, n: number) => `${currency}${Number(n || 0).toLo
 export const digestSubject = (items: DueItem[]) => {
   const today = items.filter((i) => i.inDays === 0).length;
   return today > 0
-    ? `⚠️ ${today} payment${today > 1 ? 's' : ''} due TODAY — SmartFinance`
-    : `🔔 ${items.length} upcoming payment${items.length > 1 ? 's' : ''} — SmartFinance`;
+    ? `⚠️ ${today} payment${today > 1 ? 's' : ''} due TODAY — SMT-C`
+    : `🔔 ${items.length} upcoming payment${items.length > 1 ? 's' : ''} — SMT-C`;
 };
 
 export const digestText = (items: DueItem[], currency: string) =>
@@ -86,7 +86,7 @@ export const digestHtml = (items: DueItem[], currency: string) => {
   return `
   <div style="font-family:-apple-system,Inter,Segoe UI,Roboto,sans-serif;max-width:560px;margin:0 auto;padding:16px;color:#0f172a;">
     <div style="background:linear-gradient(135deg,#006786,#1186ac 55%,#ff458e);border-radius:16px;padding:20px;color:#fff;">
-      <div style="font-size:12px;letter-spacing:.08em;text-transform:uppercase;opacity:.85;">SmartFinance · Due alerts</div>
+      <div style="font-size:12px;letter-spacing:.08em;text-transform:uppercase;opacity:.85;">SMT-C · Due alerts</div>
       <div style="font-size:24px;font-weight:800;margin-top:4px;">${items.length} payment${items.length > 1 ? 's' : ''} coming up</div>
       <div style="font-size:14px;opacity:.9;margin-top:2px;">Total ${money(currency, total)}</div>
     </div>
