@@ -34,9 +34,7 @@ export const Navbar: React.FC<NavbarProps> = ({
       <div className="max-w-4xl mx-auto flex items-center justify-between pt-2 min-h-[3.25rem]">
         {/* App Brand */}
         <div className="flex items-center space-x-2 xs:space-x-2.5 min-w-0">
-          <div className="w-10 h-10 shrink-0 rounded-xl bg-brand-600 flex items-center justify-center text-white font-extrabold text-lg shadow-md shadow-brand-500/20">
-            S
-          </div>
+          <img src="/pwa-192x192.png" alt="" className="w-10 h-10 shrink-0 rounded-xl shadow-md shadow-brand-500/20" />
           <div>
             <h1 className="font-bold text-base tracking-tight text-gray-900 dark:text-white leading-tight">
               SMT<span className="text-brand-600 dark:text-brand-400">-C</span>
