@@ -31,7 +31,7 @@ export const Navbar: React.FC<NavbarProps> = ({
       <div className="max-w-4xl mx-auto flex items-center justify-between pt-2 min-h-[3.25rem]">
         {/* App Brand */}
         <div className="flex items-center space-x-2 xs:space-x-2.5 min-w-0">
-          <div className="w-10 h-10 shrink-0 rounded-xl bg-gradient-to-tr from-brand-600 to-accent2-500 flex items-center justify-center text-white font-extrabold text-lg shadow-md shadow-brand-500/20">
+          <div className="w-10 h-10 shrink-0 rounded-xl bg-brand-600 flex items-center justify-center text-white font-extrabold text-lg shadow-md shadow-brand-500/20">
             S
           </div>
           <div>

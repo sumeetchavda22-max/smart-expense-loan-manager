@@ -208,7 +208,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onOpenQuickAdd, onNavigate
             </div>
             <div className="w-full h-2 rounded-full bg-gray-200 dark:bg-slate-800 overflow-hidden relative">
               <div
-                className="h-full bg-gradient-to-r from-growth-teal via-primary to-cashflow-emerald rounded-full transition-all duration-500"
+                className="h-full bg-brand-600 dark:bg-primary rounded-full transition-all duration-500"
                 style={{ width: `${spendRatio}%` }}
               />
             </div>
@@ -340,7 +340,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onOpenQuickAdd, onNavigate
                       <span className="text-gray-500 dark:text-text-secondary">Remaining: <strong className="text-gray-900 dark:text-text-primary tabular-nums">{currency}{fmt(topLoan.outstandingBalance)}</strong></span>
                     </div>
                     <div className="w-full h-2 rounded-full bg-gray-200 dark:bg-slate-800 overflow-hidden">
-                      <div className="h-full bg-gradient-to-r from-growth-teal to-cashflow-emerald rounded-full" style={{ width: `${pct}%` }} />
+                      <div className="h-full bg-cashflow-emerald rounded-full" style={{ width: `${pct}%` }} />
                     </div>
                   </>
                 );

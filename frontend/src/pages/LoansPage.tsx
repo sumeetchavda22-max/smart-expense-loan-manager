@@ -150,7 +150,7 @@ export const LoansPage: React.FC<LoansPageProps> = ({ onOpenQuickAdd }) => {
                   </div>
                   <div className="w-full h-2.5 rounded-full bg-gray-100 dark:bg-slate-800 overflow-hidden">
                     <div
-                      className="h-full rounded-full bg-gradient-to-r from-brand-600 to-emerald-500 transition-all duration-300"
+                      className="h-full rounded-full bg-emerald-500 transition-all duration-300"
                       style={{ width: `${Math.min(100, Math.max(0, completionRatio))}%` }}
                     />
                   </div>

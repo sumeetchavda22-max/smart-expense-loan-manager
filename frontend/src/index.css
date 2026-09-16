@@ -273,13 +273,14 @@
     box-shadow: 0 8px 30px rgba(0, 0, 0, 0.95);
   }
 
+  /* Monochrome FAB — white on black, no green accent glow. */
   .amoled .liquid-fab {
     background: #000000 !important;
-    border: 2px solid #00C49F !important;
-    box-shadow: 
-      0 0 25px 4px rgba(0, 196, 159, 0.4),
+    border: 2px solid #ffffff !important;
+    box-shadow:
+      0 0 20px 2px rgba(255, 255, 255, 0.18),
       inset 0 1px 2px rgba(255, 255, 255, 0.4) !important;
-    color: #00C49F !important;
+    color: #ffffff !important;
   }
 
   /* Flat pure black, no gradient, no green glow — AMOLED is meant to be monochrome. */
@@ -324,11 +325,11 @@
     background: rgba(30, 41, 59, 0.75);
   }
 
+  /* Flat brand teal, not a gradient — premium reads as one confident color, not a blend. */
   .liquid-fab {
-    background: linear-gradient(135deg, #006d8d 0%, #0088B0 50%, #00C49F 100%);
+    background: #0088B0;
     box-shadow:
-      0 12px 28px -6px rgba(0, 136, 176, 0.5),
-      0 0 20px 2px rgba(0, 196, 159, 0.3),
+      0 12px 28px -6px rgba(0, 136, 176, 0.45),
       inset 0 1px 2px rgba(255, 255, 255, 0.4);
   }
 
@@ -485,7 +486,7 @@
 }
 .tab-slider.is-ready { opacity: 1; }
 .dark .tab-slider { background: rgba(98, 197, 238, 0.16); border-color: rgba(98, 197, 238, 0.35); box-shadow: 0 0 18px rgba(98, 197, 238, 0.28); }
-.amoled .tab-slider { background: rgba(16, 185, 129, 0.16) !important; border-color: rgba(16, 185, 129, 0.4) !important; box-shadow: 0 0 18px rgba(16, 185, 129, 0.3) !important; }
+.amoled .tab-slider { background: rgba(255, 255, 255, 0.12) !important; border-color: rgba(255, 255, 255, 0.3) !important; box-shadow: 0 0 14px rgba(255, 255, 255, 0.15) !important; }
 
 .tab-item {
   position: relative; z-index: 1; /* sits above the sliding pill */
@@ -500,7 +501,7 @@
 .tab-item:active { transform: scale(0.92); }
 .tab-item.is-active { color: #1186ac; }
 .dark .tab-item.is-active { color: #62c5ee; }
-.amoled .tab-item.is-active { color: #10b981; }
+.amoled .tab-item.is-active { color: #ffffff; }
 .tab-icon { display: flex; align-items: center; justify-content: center; }
 .tab-label { font-size: 9.5px; font-weight: 600; line-height: 1; letter-spacing: 0.01em; }
 .tab-item.is-active .tab-label { font-weight: 700; }
@@ -513,7 +514,7 @@
   transition: transform 140ms ease;
 }
 .dark .tab-add { box-shadow: 0 10px 22px -6px rgba(17, 134, 172, 0.65), 0 0 0 4px rgba(17, 24, 39, 0.75); }
-.amoled .tab-add { box-shadow: 0 10px 22px -6px rgba(0, 196, 159, 0.5), 0 0 0 4px rgba(0, 0, 0, 0.85) !important; }
+.amoled .tab-add { box-shadow: 0 10px 22px -6px rgba(255, 255, 255, 0.25), 0 0 0 4px rgba(0, 0, 0, 0.85) !important; }
 .tab-item:active .tab-add { transform: scale(0.92); }
 
 /* Header: a touch more glass so the balance card blurs through it, like a native nav bar */

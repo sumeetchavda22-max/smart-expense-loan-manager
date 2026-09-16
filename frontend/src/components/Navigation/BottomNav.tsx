@@ -38,14 +38,17 @@ export const BottomNav: React.FC<BottomNavProps> = ({
     setMenuOpen(false);
   };
 
+  // One neutral tone for every tile — icon + label already distinguish them, so a different
+  // color per tile was just noise. Quick Create keeps the brand accent since it's the one
+  // primary action here.
   const moreMenuItems = [
-    { id: 'salary', label: 'Salary', icon: Briefcase, color: 'bg-emerald-500' },
-    { id: 'accounts', label: 'Accounts', icon: Wallet, color: 'bg-purple-500' },
-    { id: 'reminders', label: 'Reminders', icon: Bell, color: 'bg-amber-500' },
-    { id: 'calendar', label: 'Calendar', icon: Calendar, color: 'bg-indigo-500' },
-    { id: 'reports', label: 'Reports', icon: BarChart3, color: 'bg-teal-500' },
-    { id: 'calculators', label: 'Calculators', icon: Calculator, color: 'bg-rose-500' },
-    { id: 'settings', label: 'Settings', icon: SettingsIcon, color: 'bg-slate-600' },
+    { id: 'salary', label: 'Salary', icon: Briefcase },
+    { id: 'accounts', label: 'Accounts', icon: Wallet },
+    { id: 'reminders', label: 'Reminders', icon: Bell },
+    { id: 'calendar', label: 'Calendar', icon: Calendar },
+    { id: 'reports', label: 'Reports', icon: BarChart3 },
+    { id: 'calculators', label: 'Calculators', icon: Calculator },
+    { id: 'settings', label: 'Settings', icon: SettingsIcon },
   ];
 
   const tabs = [
@@ -180,7 +183,7 @@ export const BottomNav: React.FC<BottomNavProps> = ({
                         : 'hover:border-brand-300'
                     }`}
                   >
-                    <div className={`w-10 h-10 rounded-xl ${item.color} text-white shadow-md shadow-brand-500/10 flex items-center justify-center group-hover:scale-110 transition-transform`}>
+                    <div className="w-10 h-10 rounded-xl bg-gray-100 dark:bg-slate-800 text-gray-600 dark:text-slate-300 flex items-center justify-center group-hover:scale-110 transition-transform">
                       <Icon className="w-[18px] h-[18px]" />
                     </div>
                     <p className="text-[10.5px] font-bold text-gray-900 dark:text-white leading-tight">{item.label}</p>

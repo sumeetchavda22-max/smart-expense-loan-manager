@@ -56,7 +56,7 @@ export const PINLockModal: React.FC = () => {
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-950/90 backdrop-blur-md p-4 pt-safe pb-safe animate-in fade-in duration-300" role="dialog" aria-modal="true" aria-label="Enter PIN">
       <div className="w-full max-w-sm flex flex-col items-center justify-center text-center space-y-6">
-        <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-brand-600 to-accent2-500 flex items-center justify-center text-white shadow-xl shadow-brand-500/30">
+        <div className="w-16 h-16 rounded-2xl bg-brand-600 flex items-center justify-center text-white shadow-xl shadow-brand-500/30">
           <ShieldCheck className="w-8 h-8" />
         </div>
 
