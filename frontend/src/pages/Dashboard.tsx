@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { Eye, EyeOff } from 'lucide-react';
 import { useFinance } from '../context/FinanceContext';
 import { ExpensePieChart, IncomeVsExpenseChart, MonthlyTrendChart } from '../components/Charts/DashboardCharts';
 import { currentMonthStr } from '../db/client';
@@ -49,6 +50,19 @@ export const Dashboard: React.FC<DashboardProps> = ({ onOpenQuickAdd, onNavigate
     if (id) sessionStorage.setItem('dashboard_account_view', id);
     else sessionStorage.removeItem('dashboard_account_view');
   };
+
+  // Privacy: hides the balance and income figures (someone glancing at the phone can't read
+  // your net worth), while expenses stay visible — those two are the ones the user asked to
+  // mask; expenses were explicitly asked to stay visible. Persisted like the theme/font choice.
+  const [amountsHidden, setAmountsHidden] = useState<boolean>(() => localStorage.getItem('hide_amounts') === 'true');
+  const toggleAmountsHidden = () => {
+    setAmountsHidden((prev) => {
+      const next = !prev;
+      localStorage.setItem('hide_amounts', String(next));
+      return next;
+    });
+  };
+  const MASK = '••••••';
 
   if (loading) {
     return (
@@ -178,8 +192,16 @@ export const Dashboard: React.FC<DashboardProps> = ({ onOpenQuickAdd, onNavigate
           </div>
 
           <div className="flex items-center justify-between mt-2.5 mb-1 gap-2">
-            <span className="text-label-caps font-label-caps text-gray-500 dark:text-text-secondary uppercase">
+            <span className="text-label-caps font-label-caps text-gray-500 dark:text-text-secondary uppercase flex items-center gap-1.5">
               {selectedAccount ? selectedAccount.type.replace('_', ' ') : 'Total Balance'}
+              <button
+                onClick={toggleAmountsHidden}
+                className="text-gray-400 dark:text-text-secondary hover:text-gray-600 dark:hover:text-text-primary -my-1 p-1"
+                aria-label={amountsHidden ? 'Show amounts' : 'Hide amounts'}
+                title={amountsHidden ? 'Show balance & income' : 'Hide balance & income'}
+              >
+                {amountsHidden ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+              </button>
             </span>
             {trendPct !== null && (
               <span
@@ -198,7 +220,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onOpenQuickAdd, onNavigate
             {/* key swaps the node when the account changes so the fade-in replays as a subtle transition */}
             <div key={selectedAccountId ?? 'all'} className="animate-in fade-in duration-300">
               <button onClick={() => onNavigate?.('accounts')} className="font-display-lg-mobile text-display-lg-mobile text-gray-900 dark:text-text-primary tracking-tight text-left tabular-nums">
-                {currency}{fmt(heroBalance)}
+                {amountsHidden ? MASK : `${currency}${fmt(heroBalance)}`}
               </button>
               <p className="text-label-caps font-label-caps text-gray-500 dark:text-text-secondary mt-0.5">
                 {selectedAccount ? (selectedAccount.bankName || 'This account') : 'Total across all accounts'}
@@ -212,14 +234,14 @@ export const Dashboard: React.FC<DashboardProps> = ({ onOpenQuickAdd, onNavigate
               <button onClick={() => onNavigate?.('accounts')} className="bg-gray-50/80 dark:bg-surface-dim/70 rounded-lg p-2 border border-gray-200 dark:border-slate-border flex items-center justify-between text-left active:scale-[0.98] transition-transform">
                 <div className="min-w-0">
                   <span className="text-label-caps font-label-caps text-gray-500 dark:text-text-secondary block">Bank Accounts</span>
-                  <span className="font-label-numeric-md text-label-numeric-md text-gray-900 dark:text-text-primary tabular-nums">{currency}{fmt(d.bankBalance)}</span>
+                  <span className="font-label-numeric-md text-label-numeric-md text-gray-900 dark:text-text-primary tabular-nums">{amountsHidden ? MASK : `${currency}${fmt(d.bankBalance)}`}</span>
                 </div>
                 <span className="material-symbols-outlined text-blue-600 dark:text-secondary text-lg shrink-0">account_balance</span>
               </button>
               <button onClick={() => onNavigate?.('accounts')} className="bg-gray-50/80 dark:bg-surface-dim/70 rounded-lg p-2 border border-gray-200 dark:border-slate-border flex items-center justify-between text-left active:scale-[0.98] transition-transform">
                 <div className="min-w-0">
                   <span className="text-label-caps font-label-caps text-gray-500 dark:text-text-secondary block">Cash Wallet</span>
-                  <span className="font-label-numeric-md text-label-numeric-md text-gray-900 dark:text-text-primary tabular-nums">{currency}{fmt(d.cashInHand)}</span>
+                  <span className="font-label-numeric-md text-label-numeric-md text-gray-900 dark:text-text-primary tabular-nums">{amountsHidden ? MASK : `${currency}${fmt(d.cashInHand)}`}</span>
                 </div>
                 <span className="material-symbols-outlined text-cashflow-emerald text-lg shrink-0">wallet</span>
               </button>
@@ -242,7 +264,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onOpenQuickAdd, onNavigate
             <div className="flex items-center justify-between text-body-sm font-body-sm mb-1.5 gap-2">
               <span className="text-gray-500 dark:text-text-secondary flex items-center gap-1 truncate">
                 <span className="w-1.5 h-1.5 rounded-full bg-cashflow-emerald shrink-0" />
-                Income: <strong className="text-gray-900 dark:text-text-primary font-semibold tabular-nums">{currency}{fmt(heroIncome)}</strong>
+                Income: <strong className="text-gray-900 dark:text-text-primary font-semibold tabular-nums">{amountsHidden ? MASK : `${currency}${fmt(heroIncome)}`}</strong>
               </span>
               <span className="text-gray-500 dark:text-text-secondary shrink-0 tabular-nums">
                 Spent: <strong className="text-gray-900 dark:text-text-primary font-semibold">{currency}{fmt(heroExpense)}</strong> ({spendRatio}%)
@@ -273,7 +295,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onOpenQuickAdd, onNavigate
         <div className="liquid-glass-card rounded-xl p-3 border border-gray-200 dark:border-slate-border text-center">
           <span className="text-label-caps font-label-caps text-gray-500 dark:text-text-secondary uppercase block">Income</span>
           <span className="mt-1 block font-label-numeric-md text-label-numeric-md text-cashflow-emerald font-bold tabular-nums truncate">
-            {currency}{fmt(heroIncome)}
+            {amountsHidden ? MASK : `${currency}${fmt(heroIncome)}`}
           </span>
         </div>
         <div className="liquid-glass-card rounded-xl p-3 border border-gray-200 dark:border-slate-border text-center">
