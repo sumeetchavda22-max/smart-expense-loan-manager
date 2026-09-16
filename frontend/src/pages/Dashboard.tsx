@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useFinance } from '../context/FinanceContext';
 import { ExpensePieChart, IncomeVsExpenseChart, MonthlyTrendChart } from '../components/Charts/DashboardCharts';
 
@@ -38,6 +38,16 @@ const quickActions = [
 export const Dashboard: React.FC<DashboardProps> = ({ onOpenQuickAdd, onNavigate }) => {
   const { dashboard, loading, currency, loans, expenses, incomes, salaries } = useFinance();
 
+  // Net Worth (assets - liabilities) vs Balance (raw account total, no liabilities netted in) —
+  // remembered only for this browser tab's session, per-tab like the rest of the local-first data.
+  const [balanceView, setBalanceView] = useState<'networth' | 'balance'>(() => {
+    return (sessionStorage.getItem('dashboard_balance_view') as 'networth' | 'balance') || 'balance';
+  });
+  const setBalanceViewPersisted = (view: 'networth' | 'balance') => {
+    setBalanceView(view);
+    sessionStorage.setItem('dashboard_balance_view', view);
+  };
+
   if (loading) {
     return (
       <div className="space-y-4 p-4 max-w-4xl mx-auto">
@@ -52,7 +62,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onOpenQuickAdd, onNavigate
   }
 
   const d = dashboard || {
-    currentBalance: 0, totalSalary: 0, totalIncome: 0, totalExpenses: 0, totalMonthExpenses: 0, totalLoanBalance: 0,
+    currentBalance: 0, netWorth: 0, totalSalary: 0, totalIncome: 0, totalExpenses: 0, totalMonthExpenses: 0, totalLoanBalance: 0,
     totalMonthlyEMI: 0, savings: 0, cashInHand: 0, bankBalance: 0, totalCreditCardDue: 0,
     upcomingPayments: [], todayRemindersCount: 0, todayReminders: [], monthlyBudget: 0,
     monthlyRemaining: 0, pieChartData: [], monthlyTrend: undefined,
@@ -117,8 +127,31 @@ export const Dashboard: React.FC<DashboardProps> = ({ onOpenQuickAdd, onNavigate
       <section className="liquid-glass rounded-xl p-4 xs:p-5 relative overflow-hidden shadow-lg border border-gray-200 dark:border-slate-border net-worth-card">
         <div className="absolute -right-8 -top-8 w-32 h-32 bg-primary/10 rounded-full blur-2xl pointer-events-none" />
         <div className="relative z-10">
-          <div className="flex items-center justify-between mb-1">
-            <span className="text-label-caps font-label-caps text-gray-500 dark:text-text-secondary uppercase">Total Net Balance</span>
+          <div className="flex items-center justify-between mb-1 gap-2">
+            {/* Net Worth / Balance toggle — smooth sliding pill, choice remembered for this session */}
+            <div className="relative grid grid-cols-2 w-32 xs:w-36 p-0.5 rounded-full bg-gray-100 dark:bg-slate-800/80 border border-gray-200 dark:border-slate-border shrink-0">
+              <span
+                className="absolute inset-y-0.5 left-0.5 w-[calc(50%-2px)] rounded-full bg-brand-600 shadow-sm transition-transform duration-300 ease-out"
+                style={{ transform: balanceView === 'balance' ? 'translateX(100%)' : 'translateX(0%)' }}
+                aria-hidden="true"
+              />
+              <button
+                onClick={() => setBalanceViewPersisted('networth')}
+                className={`relative z-10 py-1 text-[10px] xs:text-[10.5px] font-bold rounded-full transition-colors duration-300 ${
+                  balanceView === 'networth' ? 'text-white' : 'text-gray-500 dark:text-text-secondary'
+                }`}
+              >
+                Net Worth
+              </button>
+              <button
+                onClick={() => setBalanceViewPersisted('balance')}
+                className={`relative z-10 py-1 text-[10px] xs:text-[10.5px] font-bold rounded-full transition-colors duration-300 ${
+                  balanceView === 'balance' ? 'text-white' : 'text-gray-500 dark:text-text-secondary'
+                }`}
+              >
+                Balance
+              </button>
+            </div>
             {trendPct !== null && (
               <span
                 className={`inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full font-body-sm text-body-sm font-semibold border ${
@@ -133,9 +166,15 @@ export const Dashboard: React.FC<DashboardProps> = ({ onOpenQuickAdd, onNavigate
           </div>
 
           <div className="mb-3">
-            <button onClick={() => onNavigate?.('accounts')} className="font-display-lg-mobile text-display-lg-mobile text-gray-900 dark:text-text-primary tracking-tight text-left tabular-nums">
-              {currency}{fmt(d.currentBalance)}
-            </button>
+            {/* key swaps the node on toggle so the fade-in below replays as a subtle transition */}
+            <div key={balanceView} className="animate-in fade-in duration-300">
+              <button onClick={() => onNavigate?.('accounts')} className="font-display-lg-mobile text-display-lg-mobile text-gray-900 dark:text-text-primary tracking-tight text-left tabular-nums">
+                {currency}{fmt(balanceView === 'networth' ? d.netWorth : d.currentBalance)}
+              </button>
+              <p className="text-label-caps font-label-caps text-gray-500 dark:text-text-secondary mt-0.5">
+                {balanceView === 'networth' ? 'Assets minus loans & card dues' : 'Total across all accounts'}
+              </p>
+            </div>
           </div>
 
           {/* Account breakdown */}
@@ -176,14 +215,19 @@ export const Dashboard: React.FC<DashboardProps> = ({ onOpenQuickAdd, onNavigate
             <div className="flex justify-between items-center mt-1">
               <span className={`text-label-caps font-label-caps ${cashflowStatus.tone}`}>{cashflowStatus.label}</span>
               <span className="text-label-caps font-label-caps text-gray-500 dark:text-text-secondary tabular-nums">
-                {currency}{fmt(Math.max(0, d.totalIncome - d.totalMonthExpenses))} remaining
+                {currency}{fmt(d.savings)} remaining
               </span>
             </div>
           </div>
         </div>
       </section>
 
-      {/* Income / Expenses / Balance summary strip — this month */}
+      {/* Income / Expenses / Savings summary strip — this month.
+          "Savings" (income minus expenses this month) is deliberately NOT called "Balance" —
+          that word is reserved for actual account balances (the hero toggle above). Two
+          different numbers both labeled "Balance" on one screen is what read as a double
+          deduction bug; they're different metrics; d.savings is the same value used for the
+          "remaining" line above, computed once in db/dashboard.ts. */}
       <section className="grid grid-cols-3 gap-2">
         <div className="liquid-glass-card rounded-xl p-3 border border-gray-200 dark:border-slate-border text-center">
           <span className="text-label-caps font-label-caps text-gray-500 dark:text-text-secondary uppercase block">Income</span>
@@ -198,9 +242,9 @@ export const Dashboard: React.FC<DashboardProps> = ({ onOpenQuickAdd, onNavigate
           </span>
         </div>
         <div className="liquid-glass-card rounded-xl p-3 border border-gray-200 dark:border-slate-border text-center">
-          <span className="text-label-caps font-label-caps text-gray-500 dark:text-text-secondary uppercase block">Balance</span>
+          <span className="text-label-caps font-label-caps text-gray-500 dark:text-text-secondary uppercase block">Savings</span>
           <span className="mt-1 block font-label-numeric-md text-label-numeric-md text-gray-900 dark:text-text-primary font-bold tabular-nums truncate">
-            {currency}{fmt(d.totalIncome - d.totalMonthExpenses)}
+            {currency}{fmt(d.savings)}
           </span>
         </div>
       </section>

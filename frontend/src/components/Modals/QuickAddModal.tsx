@@ -96,6 +96,39 @@ export const QuickAddModal: React.FC<QuickAddModalProps> = ({
 
   if (!isOpen) return null;
 
+  // The modal is kept mounted at all times (App.tsx gates it with isOpen, it never unmounts),
+  // so every useState above keeps its value across opens unless explicitly cleared here. Without
+  // this, the next "Quick Create" would silently reopen pre-filled with the last transaction's
+  // amount/category/account/etc. — reset everything to its true blank/default value, not just
+  // whatever the previous entry happened to contain.
+  const resetForms = () => {
+    setExpTitle(''); setExpAmount(''); setExpCategory(''); setExpMethod('UPI'); setExpAccount('');
+    setExpNotes(''); setExpTags(''); setExpReceipt(null); setExpRecurring(false); setExpFrequency('MONTHLY');
+
+    setIncTitle(''); setIncAmount(''); setIncSource('SALARY'); setIncAccount('');
+    setIncDate(new Date().toISOString().substring(0, 10)); setIncNotes('');
+
+    setSalCompany(''); setSalAmount(''); setSalDate('1'); setSalAccount('');
+    setSalBonus('0'); setSalOvertime('0'); setSalPF('0'); setSalTax('0'); setSalTDS('0');
+
+    setLoanName(''); setLoanType('PERSONAL'); setLoanBank(''); setLoanAmount('');
+    setLoanFrequency('MONTHLY'); setLoanTotalEmis('12'); setLoanEmiAmount('');
+    setLoanStartDate(new Date().toISOString().substring(0, 10)); setLoanFirstEmiDate('');
+
+    setRemTitle(''); setRemType('LOAN_EMI'); setRemAmount('');
+    setRemDueDate(new Date().toISOString().substring(0, 10)); setRemDueTime('09:00');
+    setRemRepeat('MONTHLY'); setRemPriority('MEDIUM');
+
+    setError(null);
+  };
+
+  // Every close path — successful submit, the X button, or tapping the backdrop — goes through
+  // this, so a cancelled entry can't leak into the next one any more than a submitted one can.
+  const handleClose = () => {
+    resetForms();
+    onClose();
+  };
+
   const handleSubmitExpense = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!expTitle || !expAmount) return setError('Title and amount required');
@@ -116,7 +149,7 @@ export const QuickAddModal: React.FC<QuickAddModalProps> = ({
 
       await api.createExpense(fd);
       await refreshData();
-      onClose();
+      handleClose();
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -139,7 +172,7 @@ export const QuickAddModal: React.FC<QuickAddModalProps> = ({
         notes: incNotes,
       });
       await refreshData();
-      onClose();
+      handleClose();
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -165,7 +198,7 @@ export const QuickAddModal: React.FC<QuickAddModalProps> = ({
         tdsDeduction: Number(salTDS),
       });
       await refreshData();
-      onClose();
+      handleClose();
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -191,7 +224,7 @@ export const QuickAddModal: React.FC<QuickAddModalProps> = ({
         nextDueDate: loanFirstEmiDate || undefined,
       });
       await refreshData();
-      onClose();
+      handleClose();
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -215,7 +248,7 @@ export const QuickAddModal: React.FC<QuickAddModalProps> = ({
         priority: remPriority,
       });
       await refreshData();
-      onClose();
+      handleClose();
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -224,14 +257,14 @@ export const QuickAddModal: React.FC<QuickAddModalProps> = ({
   };
 
   return (
-    <div className="sheet-overlay" onClick={onClose} role="dialog" aria-modal="true" aria-label="Quick create">
+    <div className="sheet-overlay" onClick={handleClose} role="dialog" aria-modal="true" aria-label="Quick create">
       <div className="sheet-panel bg-white dark:bg-slate-900 shadow-2xl" onClick={(e) => e.stopPropagation()}>
         <div className="sheet-handle" />
         {/* Header */}
         <div className="flex items-center justify-between pl-5 pr-3 py-3 border-b border-gray-100 dark:border-slate-800">
           <h2 className="text-lg font-bold text-gray-900 dark:text-white">Quick Create</h2>
           <button
-            onClick={onClose}
+            onClick={handleClose}
             className="w-10 h-10 flex items-center justify-center rounded-full text-gray-400 hover:text-gray-600 dark:hover:text-slate-200 hover:bg-gray-100 dark:hover:bg-slate-800 active:bg-gray-200/70"
             aria-label="Close"
           >

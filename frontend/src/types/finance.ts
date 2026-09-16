@@ -148,6 +148,10 @@ export interface Reminder {
 
 export interface DashboardData {
   currentBalance: number;
+  /** Assets (account balances) minus liabilities (loans outstanding + credit card dues) — the
+   * "Net Worth" side of the Dashboard toggle. `currentBalance` itself is the "Balance" side and
+   * never has liabilities netted into it. */
+  netWorth: number;
   totalSalary: number;
   totalIncome: number;
   totalExpenses: number;

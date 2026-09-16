@@ -1,4 +1,4 @@
-import { getDb, currentMonthStr } from './client';
+import { getDb, currentMonthStr, round2 } from './client';
 import { ensureSeeded } from './seed';
 import { DashboardData } from '../types/finance';
 
@@ -49,6 +49,11 @@ export async function computeDashboard(): Promise<DashboardData> {
   const totalMonthlyEMI = loans.reduce((acc, l) => acc + l.emiAmount, 0);
   const totalCreditCardDue = creditCards.reduce((acc, c) => acc + c.totalDue, 0);
 
+  // Net Worth = assets (account balances) minus liabilities (loans + card dues). `currentBalance`
+  // stays liability-free on purpose — it's the actual, literal sum of what's sitting in accounts
+  // right now, for the Dashboard's Balance/Net Worth toggle (see Dashboard.tsx).
+  const netWorth = round2(currentBalance - totalLoanBalance - totalCreditCardDue);
+
   const savings = Math.max(0, totalIncome - totalMonthExpenses);
 
   const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -93,6 +98,7 @@ export async function computeDashboard(): Promise<DashboardData> {
 
   return {
     currentBalance,
+    netWorth,
     totalSalary,
     totalIncome,
     totalExpenses,
