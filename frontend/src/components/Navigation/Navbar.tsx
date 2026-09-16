@@ -6,6 +6,7 @@ import {
   Lock,
   Calendar as CalendarIcon,
   Calculator,
+  Grid,
 } from 'lucide-react';
 import { useTheme } from '../../context/ThemeContext';
 import { useAuthPin } from '../../context/AuthPinContext';
@@ -15,12 +16,14 @@ interface NavbarProps {
   onOpenSearch: () => void;
   onOpenCalendar: () => void;
   onOpenCalculators: () => void;
+  onOpenMore: () => void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
   onOpenSearch,
   onOpenCalendar,
   onOpenCalculators,
+  onOpenMore,
 }) => {
   const { theme, toggleTheme } = useTheme();
   const { lockApp, pinRequired } = useAuthPin();
@@ -71,6 +74,14 @@ export const Navbar: React.FC<NavbarProps> = ({
             title="EMI & Financial Calculators" aria-label="Calculators"
           >
             <Calculator className="w-5 h-5" />
+          </button>
+
+          <button
+            onClick={onOpenMore}
+            className="w-11 h-11 flex items-center justify-center rounded-xl text-gray-600 dark:text-slate-300 hover:bg-gray-100 dark:hover:bg-slate-800 active:bg-gray-200/70 dark:active:bg-slate-700/70 transition-colors"
+            title="Salary, Reminders, Reports & more" aria-label="More"
+          >
+            <Grid className="w-5 h-5" />
           </button>
 
           <button

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useFinance } from '../context/FinanceContext';
 import { ExpensePieChart, IncomeVsExpenseChart, MonthlyTrendChart } from '../components/Charts/DashboardCharts';
+import { currentMonthStr } from '../db/client';
 
 interface DashboardProps {
   onOpenQuickAdd: (tab?: string) => void;
@@ -36,16 +37,17 @@ const quickActions = [
 ];
 
 export const Dashboard: React.FC<DashboardProps> = ({ onOpenQuickAdd, onNavigate }) => {
-  const { dashboard, loading, currency, loans, expenses, incomes, salaries } = useFinance();
+  const { dashboard, loading, currency, loans, expenses, incomes, salaries, accounts } = useFinance();
 
-  // Net Worth (assets - liabilities) vs Balance (raw account total, no liabilities netted in) —
-  // remembered only for this browser tab's session, per-tab like the rest of the local-first data.
-  const [balanceView, setBalanceView] = useState<'networth' | 'balance'>(() => {
-    return (sessionStorage.getItem('dashboard_balance_view') as 'networth' | 'balance') || 'balance';
+  // Which account the hero card is showing — "All" (null) or one specific account. Remembered
+  // only for this browser tab's session. Heals itself if the remembered account was deleted.
+  const [selectedAccountId, setSelectedAccountId] = useState<string | null>(() => {
+    return sessionStorage.getItem('dashboard_account_view') || null;
   });
-  const setBalanceViewPersisted = (view: 'networth' | 'balance') => {
-    setBalanceView(view);
-    sessionStorage.setItem('dashboard_balance_view', view);
+  const setSelectedAccountPersisted = (id: string | null) => {
+    setSelectedAccountId(id);
+    if (id) sessionStorage.setItem('dashboard_account_view', id);
+    else sessionStorage.removeItem('dashboard_account_view');
   };
 
   if (loading) {
@@ -70,7 +72,30 @@ export const Dashboard: React.FC<DashboardProps> = ({ onOpenQuickAdd, onNavigate
 
   const today = new Date();
   const monthLabel = today.toLocaleDateString('en-IN', { month: 'long', year: 'numeric' });
-  const spendRatio = d.totalIncome > 0 ? Math.min(100, Math.round((d.totalMonthExpenses / d.totalIncome) * 100)) : 0;
+
+  // The remembered account might have since been deleted — treat that the same as "All".
+  const selectedAccount = (selectedAccountId && (accounts || []).find((a) => a.id === selectedAccountId)) || null;
+
+  // Scoped to one account: recompute this month's income/expense/savings from the same raw
+  // records the aggregate dashboard is built from (db/dashboard.ts), just filtered to this
+  // account's own transactions — not a second, divergent calculation, just a narrower view of it.
+  const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+  const inThisMonth = (dateStr: string) => new Date(dateStr) >= startOfMonth;
+  const scoped = selectedAccount
+    ? {
+        balance: selectedAccount.balance,
+        income:
+          (incomes || []).filter((i) => i.accountId === selectedAccount.id && inThisMonth(i.date)).reduce((s, i) => s + i.amount, 0) +
+          (salaries || []).filter((s) => s.accountId === selectedAccount.id && s.month === currentMonthStr(today)).reduce((s, x) => s + x.inHandSalary, 0),
+        expense: (expenses || []).filter((e) => e.accountId === selectedAccount.id && inThisMonth(e.date)).reduce((s, e) => s + e.amount, 0),
+      }
+    : null;
+  const heroBalance = scoped ? scoped.balance : d.currentBalance;
+  const heroIncome = scoped ? scoped.income : d.totalIncome;
+  const heroExpense = scoped ? scoped.expense : d.totalMonthExpenses;
+  const heroSavings = scoped ? Math.max(0, scoped.income - scoped.expense) : d.savings;
+
+  const spendRatio = heroIncome > 0 ? Math.min(100, Math.round((heroExpense / heroIncome) * 100)) : 0;
   const cashflowStatus =
     spendRatio >= 90 ? { label: 'Overspending', tone: 'text-alert-coral' } :
     spendRatio >= 70 ? { label: 'Moderate Spend', tone: 'text-warning-amber' } :
@@ -123,35 +148,39 @@ export const Dashboard: React.FC<DashboardProps> = ({ onOpenQuickAdd, onNavigate
         </div>
       </div>
 
-      {/* Hero Net Balance Card */}
+      {/* Hero Account Card */}
       <section className="liquid-glass rounded-xl p-4 xs:p-5 relative overflow-hidden shadow-lg border border-gray-200 dark:border-slate-border net-worth-card">
         <div className="absolute -right-8 -top-8 w-32 h-32 bg-primary/10 rounded-full blur-2xl pointer-events-none" />
         <div className="relative z-10">
-          <div className="flex items-center justify-between mb-1 gap-2">
-            {/* Net Worth / Balance toggle — smooth sliding pill, choice remembered for this session */}
-            <div className="relative grid grid-cols-2 w-32 xs:w-36 p-0.5 rounded-full bg-gray-100 dark:bg-slate-800/80 border border-gray-200 dark:border-slate-border shrink-0">
-              <span
-                className="absolute inset-y-0.5 left-0.5 w-[calc(50%-2px)] rounded-full bg-brand-600 shadow-sm transition-transform duration-300 ease-out"
-                style={{ transform: balanceView === 'balance' ? 'translateX(100%)' : 'translateX(0%)' }}
-                aria-hidden="true"
-              />
+          {/* Account switcher — "All" plus one chip per account; scrolls as more accounts are
+              added. Picking one scopes the whole card (balance, income/expense/savings below)
+              to that account instead of the combined total. */}
+          <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar snap-row -mx-1 px-1 pb-0.5">
+            <button
+              onClick={() => setSelectedAccountPersisted(null)}
+              className={`shrink-0 px-3 py-1 rounded-full text-[10.5px] font-bold transition-colors duration-200 ${
+                !selectedAccount ? 'bg-brand-600 text-white shadow-sm' : 'bg-gray-100 dark:bg-slate-800/80 text-gray-500 dark:text-text-secondary'
+              }`}
+            >
+              All
+            </button>
+            {(accounts || []).map((acc) => (
               <button
-                onClick={() => setBalanceViewPersisted('networth')}
-                className={`relative z-10 py-1 text-[10px] xs:text-[10.5px] font-bold rounded-full transition-colors duration-300 ${
-                  balanceView === 'networth' ? 'text-white' : 'text-gray-500 dark:text-text-secondary'
+                key={acc.id}
+                onClick={() => setSelectedAccountPersisted(acc.id)}
+                className={`shrink-0 px-3 py-1 rounded-full text-[10.5px] font-bold whitespace-nowrap transition-colors duration-200 ${
+                  selectedAccount?.id === acc.id ? 'bg-brand-600 text-white shadow-sm' : 'bg-gray-100 dark:bg-slate-800/80 text-gray-500 dark:text-text-secondary'
                 }`}
               >
-                Net Worth
+                {acc.isDefault ? `${acc.name} · Primary` : acc.name}
               </button>
-              <button
-                onClick={() => setBalanceViewPersisted('balance')}
-                className={`relative z-10 py-1 text-[10px] xs:text-[10.5px] font-bold rounded-full transition-colors duration-300 ${
-                  balanceView === 'balance' ? 'text-white' : 'text-gray-500 dark:text-text-secondary'
-                }`}
-              >
-                Balance
-              </button>
-            </div>
+            ))}
+          </div>
+
+          <div className="flex items-center justify-between mt-2.5 mb-1 gap-2">
+            <span className="text-label-caps font-label-caps text-gray-500 dark:text-text-secondary uppercase">
+              {selectedAccount ? selectedAccount.type.replace('_', ' ') : 'Total Balance'}
+            </span>
             {trendPct !== null && (
               <span
                 className={`inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full font-body-sm text-body-sm font-semibold border ${
@@ -166,44 +195,57 @@ export const Dashboard: React.FC<DashboardProps> = ({ onOpenQuickAdd, onNavigate
           </div>
 
           <div className="mb-3">
-            {/* key swaps the node on toggle so the fade-in below replays as a subtle transition */}
-            <div key={balanceView} className="animate-in fade-in duration-300">
+            {/* key swaps the node when the account changes so the fade-in replays as a subtle transition */}
+            <div key={selectedAccountId ?? 'all'} className="animate-in fade-in duration-300">
               <button onClick={() => onNavigate?.('accounts')} className="font-display-lg-mobile text-display-lg-mobile text-gray-900 dark:text-text-primary tracking-tight text-left tabular-nums">
-                {currency}{fmt(balanceView === 'networth' ? d.netWorth : d.currentBalance)}
+                {currency}{fmt(heroBalance)}
               </button>
               <p className="text-label-caps font-label-caps text-gray-500 dark:text-text-secondary mt-0.5">
-                {balanceView === 'networth' ? 'Assets minus loans & card dues' : 'Total across all accounts'}
+                {selectedAccount ? (selectedAccount.bankName || 'This account') : 'Total across all accounts'}
               </p>
             </div>
           </div>
 
-          {/* Account breakdown */}
-          <div className="grid grid-cols-2 gap-2 pt-2 border-t border-gray-200 dark:border-slate-border">
-            <button onClick={() => onNavigate?.('accounts')} className="bg-gray-50/80 dark:bg-surface-dim/70 rounded-lg p-2 border border-gray-200 dark:border-slate-border flex items-center justify-between text-left active:scale-[0.98] transition-transform">
-              <div className="min-w-0">
-                <span className="text-label-caps font-label-caps text-gray-500 dark:text-text-secondary block">Bank Accounts</span>
-                <span className="font-label-numeric-md text-label-numeric-md text-gray-900 dark:text-text-primary tabular-nums">{currency}{fmt(d.bankBalance)}</span>
+          {/* Account breakdown — the Bank/Cash split for "All", or this one account's own numbers */}
+          {!selectedAccount ? (
+            <div className="grid grid-cols-2 gap-2 pt-2 border-t border-gray-200 dark:border-slate-border">
+              <button onClick={() => onNavigate?.('accounts')} className="bg-gray-50/80 dark:bg-surface-dim/70 rounded-lg p-2 border border-gray-200 dark:border-slate-border flex items-center justify-between text-left active:scale-[0.98] transition-transform">
+                <div className="min-w-0">
+                  <span className="text-label-caps font-label-caps text-gray-500 dark:text-text-secondary block">Bank Accounts</span>
+                  <span className="font-label-numeric-md text-label-numeric-md text-gray-900 dark:text-text-primary tabular-nums">{currency}{fmt(d.bankBalance)}</span>
+                </div>
+                <span className="material-symbols-outlined text-blue-600 dark:text-secondary text-lg shrink-0">account_balance</span>
+              </button>
+              <button onClick={() => onNavigate?.('accounts')} className="bg-gray-50/80 dark:bg-surface-dim/70 rounded-lg p-2 border border-gray-200 dark:border-slate-border flex items-center justify-between text-left active:scale-[0.98] transition-transform">
+                <div className="min-w-0">
+                  <span className="text-label-caps font-label-caps text-gray-500 dark:text-text-secondary block">Cash Wallet</span>
+                  <span className="font-label-numeric-md text-label-numeric-md text-gray-900 dark:text-text-primary tabular-nums">{currency}{fmt(d.cashInHand)}</span>
+                </div>
+                <span className="material-symbols-outlined text-cashflow-emerald text-lg shrink-0">wallet</span>
+              </button>
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 gap-2 pt-2 border-t border-gray-200 dark:border-slate-border">
+              <div className="bg-gray-50/80 dark:bg-surface-dim/70 rounded-lg p-2 border border-gray-200 dark:border-slate-border">
+                <span className="text-label-caps font-label-caps text-gray-500 dark:text-text-secondary block">Account Type</span>
+                <span className="font-label-numeric-md text-label-numeric-md text-gray-900 dark:text-text-primary">{selectedAccount.type.replace('_', ' ')}</span>
               </div>
-              <span className="material-symbols-outlined text-blue-600 dark:text-secondary text-lg shrink-0">account_balance</span>
-            </button>
-            <button onClick={() => onNavigate?.('accounts')} className="bg-gray-50/80 dark:bg-surface-dim/70 rounded-lg p-2 border border-gray-200 dark:border-slate-border flex items-center justify-between text-left active:scale-[0.98] transition-transform">
-              <div className="min-w-0">
-                <span className="text-label-caps font-label-caps text-gray-500 dark:text-text-secondary block">Cash Wallet</span>
-                <span className="font-label-numeric-md text-label-numeric-md text-gray-900 dark:text-text-primary tabular-nums">{currency}{fmt(d.cashInHand)}</span>
+              <div className="bg-gray-50/80 dark:bg-surface-dim/70 rounded-lg p-2 border border-gray-200 dark:border-slate-border">
+                <span className="text-label-caps font-label-caps text-gray-500 dark:text-text-secondary block">This Month</span>
+                <span className="font-label-numeric-md text-label-numeric-md text-gray-900 dark:text-text-primary tabular-nums">{currency}{fmt(heroSavings)} saved</span>
               </div>
-              <span className="material-symbols-outlined text-cashflow-emerald text-lg shrink-0">wallet</span>
-            </button>
-          </div>
+            </div>
+          )}
 
-          {/* Cashflow gauge */}
+          {/* Cashflow gauge — scoped to the selected account, or the combined total for "All" */}
           <div className="mt-3.5 pt-3 border-t border-gray-200/70 dark:border-slate-border/70">
             <div className="flex items-center justify-between text-body-sm font-body-sm mb-1.5 gap-2">
               <span className="text-gray-500 dark:text-text-secondary flex items-center gap-1 truncate">
                 <span className="w-1.5 h-1.5 rounded-full bg-cashflow-emerald shrink-0" />
-                Income: <strong className="text-gray-900 dark:text-text-primary font-semibold tabular-nums">{currency}{fmt(d.totalIncome)}</strong>
+                Income: <strong className="text-gray-900 dark:text-text-primary font-semibold tabular-nums">{currency}{fmt(heroIncome)}</strong>
               </span>
               <span className="text-gray-500 dark:text-text-secondary shrink-0 tabular-nums">
-                Spent: <strong className="text-gray-900 dark:text-text-primary font-semibold">{currency}{fmt(d.totalMonthExpenses)}</strong> ({spendRatio}%)
+                Spent: <strong className="text-gray-900 dark:text-text-primary font-semibold">{currency}{fmt(heroExpense)}</strong> ({spendRatio}%)
               </span>
             </div>
             <div className="w-full h-2 rounded-full bg-gray-200 dark:bg-slate-800 overflow-hidden relative">
@@ -215,36 +257,35 @@ export const Dashboard: React.FC<DashboardProps> = ({ onOpenQuickAdd, onNavigate
             <div className="flex justify-between items-center mt-1">
               <span className={`text-label-caps font-label-caps ${cashflowStatus.tone}`}>{cashflowStatus.label}</span>
               <span className="text-label-caps font-label-caps text-gray-500 dark:text-text-secondary tabular-nums">
-                {currency}{fmt(d.savings)} remaining
+                {currency}{fmt(heroSavings)} remaining
               </span>
             </div>
           </div>
         </div>
       </section>
 
-      {/* Income / Expenses / Savings summary strip — this month.
-          "Savings" (income minus expenses this month) is deliberately NOT called "Balance" —
-          that word is reserved for actual account balances (the hero toggle above). Two
-          different numbers both labeled "Balance" on one screen is what read as a double
-          deduction bug; they're different metrics; d.savings is the same value used for the
-          "remaining" line above, computed once in db/dashboard.ts. */}
+      {/* Income / Expenses / Savings summary strip — this month, scoped to whichever account
+          is selected above (heroIncome/heroExpense/heroSavings), the combined total for "All".
+          "Savings" is deliberately NOT called "Balance" — that word is reserved for actual
+          account balances. Two different numbers both labeled "Balance" on one screen is what
+          used to read as a double-deduction bug; they're different metrics. */}
       <section className="grid grid-cols-3 gap-2">
         <div className="liquid-glass-card rounded-xl p-3 border border-gray-200 dark:border-slate-border text-center">
           <span className="text-label-caps font-label-caps text-gray-500 dark:text-text-secondary uppercase block">Income</span>
           <span className="mt-1 block font-label-numeric-md text-label-numeric-md text-cashflow-emerald font-bold tabular-nums truncate">
-            {currency}{fmt(d.totalIncome)}
+            {currency}{fmt(heroIncome)}
           </span>
         </div>
         <div className="liquid-glass-card rounded-xl p-3 border border-gray-200 dark:border-slate-border text-center">
           <span className="text-label-caps font-label-caps text-gray-500 dark:text-text-secondary uppercase block">Expenses</span>
           <span className="mt-1 block font-label-numeric-md text-label-numeric-md text-alert-coral font-bold tabular-nums truncate">
-            {currency}{fmt(d.totalMonthExpenses)}
+            {currency}{fmt(heroExpense)}
           </span>
         </div>
         <div className="liquid-glass-card rounded-xl p-3 border border-gray-200 dark:border-slate-border text-center">
           <span className="text-label-caps font-label-caps text-gray-500 dark:text-text-secondary uppercase block">Savings</span>
           <span className="mt-1 block font-label-numeric-md text-label-numeric-md text-gray-900 dark:text-text-primary font-bold tabular-nums truncate">
-            {currency}{fmt(d.savings)}
+            {currency}{fmt(heroSavings)}
           </span>
         </div>
       </section>

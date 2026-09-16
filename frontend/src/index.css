@@ -506,17 +506,6 @@
 .tab-label { font-size: 9.5px; font-weight: 600; line-height: 1; letter-spacing: 0.01em; }
 .tab-item.is-active .tab-label { font-weight: 700; }
 
-.tab-add {
-  display: flex; align-items: center; justify-content: center;
-  width: 2.75rem; height: 2.75rem; border-radius: 9999px; color: #fff;
-  margin-top: -1.85rem;                          /* floats above the pill like a compose FAB */
-  box-shadow: 0 10px 22px -6px rgba(17, 134, 172, 0.65), 0 0 0 4px rgba(255, 255, 255, 0.7);
-  transition: transform 140ms ease;
-}
-.dark .tab-add { box-shadow: 0 10px 22px -6px rgba(17, 134, 172, 0.65), 0 0 0 4px rgba(17, 24, 39, 0.75); }
-.amoled .tab-add { box-shadow: 0 10px 22px -6px rgba(255, 255, 255, 0.25), 0 0 0 4px rgba(0, 0, 0, 0.85) !important; }
-.tab-item:active .tab-add { transform: scale(0.92); }
-
 /* Header: a touch more glass so the balance card blurs through it, like a native nav bar */
 header.liquid-glass {
   background: rgba(255, 255, 255, 0.7);

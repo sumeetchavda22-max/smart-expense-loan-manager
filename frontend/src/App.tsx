@@ -5,8 +5,10 @@ import { AuthPinProvider } from './context/AuthPinContext';
 import { FinanceProvider, useFinance } from './context/FinanceContext';
 import { usePullToRefresh } from './hooks/usePullToRefresh';
 import { usePWABadge } from './hooks/usePWABadge';
+import { haptic } from './hooks/useHaptics';
 import { Navbar } from './components/Navigation/Navbar';
 import { BottomNav } from './components/Navigation/BottomNav';
+import { MoreMenuSheet } from './components/Navigation/MoreMenuSheet';
 import { QuickAddModal } from './components/Modals/QuickAddModal';
 import { GlobalSearchModal } from './components/Modals/GlobalSearchModal';
 import { PINLockModal } from './components/Modals/PINLockModal';
@@ -37,9 +39,22 @@ export const AppContent: React.FC = () => {
   const [quickAddOpen, setQuickAddOpen] = useState<boolean>(false);
   const [quickAddDefaultTab, setQuickAddDefaultTab] = useState<string>('expense');
   const [searchOpen, setSearchOpen] = useState<boolean>(false);
+  const [moreMenuOpen, setMoreMenuOpen] = useState<boolean>(false);
   const { refreshData, reminders } = useFinance();
   const { pull, refreshing, ready } = usePullToRefresh(refreshData);
   usePWABadge(reminders);
+
+  // One tap = one vibration, everywhere — every button/link in the app fires this, instead of
+  // wiring haptic() into hundreds of individual onClick handlers. No-ops silently on iOS Safari
+  // (Vibration API was never implemented there) and any browser without navigator.vibrate.
+  useEffect(() => {
+    const onPointerDown = (e: PointerEvent) => {
+      const target = (e.target as HTMLElement)?.closest('button:not(:disabled), [role="button"]:not([aria-disabled="true"]), a[href]');
+      if (target) haptic('light');
+    };
+    document.addEventListener('pointerdown', onPointerDown, { capture: true });
+    return () => document.removeEventListener('pointerdown', onPointerDown, { capture: true });
+  }, []);
 
   // Each tab is its own "screen" on a phone: always start it from the top
   useEffect(() => {
@@ -99,6 +114,7 @@ export const AppContent: React.FC = () => {
         onOpenSearch={() => setSearchOpen(true)}
         onOpenCalendar={() => setActiveTab('calendar')}
         onOpenCalculators={() => setActiveTab('calculators')}
+        onOpenMore={() => setMoreMenuOpen(true)}
       />
 
       {/* Page Routing */}
@@ -127,10 +143,23 @@ export const AppContent: React.FC = () => {
         )}
       </main>
 
-      {/* Bottom Navigation Bar with FAB (+) */}
+      {/* Bottom Navigation Bar: Home, Expenses, Loan, Account, Create */}
       <BottomNav
         activeTab={activeTab}
         setActiveTab={setActiveTab}
+        onOpenQuickAdd={() => handleOpenQuickAdd('expense')}
+      />
+
+      {/* "More" sheet — Salary, Reminders, Calendar, Reports, Calculators, Settings — opened
+          from the Navbar's grid icon now that the bottom bar is Home/Expenses/Loan/Account/Create */}
+      <MoreMenuSheet
+        isOpen={moreMenuOpen}
+        onClose={() => setMoreMenuOpen(false)}
+        activeTab={activeTab}
+        onNavigate={(tab) => {
+          setActiveTab(tab);
+          setMoreMenuOpen(false);
+        }}
         onOpenQuickAdd={() => handleOpenQuickAdd('expense')}
       />
 
